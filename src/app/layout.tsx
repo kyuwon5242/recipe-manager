@@ -29,9 +29,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white text-gray-900">
         <header className="border-b border-gray-200">
-          <div className="mx-auto flex max-w-4xl items-center px-4 py-3">
+          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
             <Link href="/recipes" className="text-lg font-bold">
               🍳 自炊レシピ管理
+            </Link>
+            <Link
+              href="/shopping-list"
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              買い物リストを作成
             </Link>
           </div>
         </header>
