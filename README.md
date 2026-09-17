@@ -1,3 +1,7 @@
+# recipe-manager
+
+自炊レシピ管理アプリ。詳細は [recipe-app-design.md](./recipe-app-design.md) を参照。
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
