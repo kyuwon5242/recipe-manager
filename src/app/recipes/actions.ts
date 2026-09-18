@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentFamilyId } from "@/lib/family/current";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -58,7 +59,8 @@ function parseIngredientRows(formData: FormData): ParsedIngredientRow[] {
 
 async function uploadPhotoIfProvided(
   supabase: SupabaseServerClient,
-  formData: FormData
+  formData: FormData,
+  familyId: string
 ): Promise<string | null> {
   const file = formData.get("photo");
   if (!(file instanceof File) || file.size === 0) {
@@ -66,7 +68,7 @@ async function uploadPhotoIfProvided(
   }
 
   const ext = file.name.includes(".") ? file.name.split(".").pop() : undefined;
-  const path = `${randomUUID()}${ext ? `.${ext}` : ""}`;
+  const path = `${familyId}/${randomUUID()}${ext ? `.${ext}` : ""}`;
 
   const { error } = await supabase.storage
     .from("recipe-photos")
@@ -133,13 +135,14 @@ async function saveRecipeIngredients(
 
 export async function createRecipe(formData: FormData) {
   const supabase = await createClient();
+  const familyId = await getCurrentFamilyId();
   const fields = parseRecipeFields(formData);
   const ingredientRows = parseIngredientRows(formData);
-  const photoUrl = await uploadPhotoIfProvided(supabase, formData);
+  const photoUrl = await uploadPhotoIfProvided(supabase, formData, familyId);
 
   const { data: recipe, error } = await supabase
     .from("recipes")
-    .insert({ ...fields, photo_url: photoUrl })
+    .insert({ ...fields, photo_url: photoUrl, family_id: familyId })
     .select("id")
     .single();
 
@@ -155,9 +158,10 @@ export async function createRecipe(formData: FormData) {
 
 export async function updateRecipe(id: string, formData: FormData) {
   const supabase = await createClient();
+  const familyId = await getCurrentFamilyId();
   const fields = parseRecipeFields(formData);
   const ingredientRows = parseIngredientRows(formData);
-  const photoUrl = await uploadPhotoIfProvided(supabase, formData);
+  const photoUrl = await uploadPhotoIfProvided(supabase, formData, familyId);
 
   const { error } = await supabase
     .from("recipes")

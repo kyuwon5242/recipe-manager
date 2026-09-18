@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/auth/actions";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,7 +23,27 @@ export const metadata: Metadata = {
   description: "家族で共有する自炊レシピ管理アプリ",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+type FamilyNameRow = {
+  families: { name: string } | null;
+};
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let familyName: string | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("family_members")
+      .select("families(name)")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle<FamilyNameRow>();
+    familyName = data?.families?.name ?? null;
+  }
+
   return (
     <html
       lang="ja"
@@ -29,16 +51,29 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-white text-gray-900">
         <header className="border-b border-gray-200">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/recipes" className="text-lg font-bold">
               🍳 自炊レシピ管理
             </Link>
-            <Link
-              href="/shopping-list"
-              className="text-sm font-medium text-emerald-700 hover:underline"
-            >
-              買い物リストを作成
-            </Link>
+            {user ? (
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <Link
+                  href="/shopping-list"
+                  className="font-medium text-emerald-700 hover:underline"
+                >
+                  買い物リストを作成
+                </Link>
+                <Link href="/family" className="text-gray-500 hover:underline">
+                  {familyName ?? "家族設定"}
+                </Link>
+                <span className="text-gray-400">{user.email}</span>
+                <form action={signOut}>
+                  <button type="submit" className="text-gray-500 hover:underline">
+                    サインアウト
+                  </button>
+                </form>
+              </div>
+            ) : null}
           </div>
         </header>
         <main className="flex-1">{children}</main>
