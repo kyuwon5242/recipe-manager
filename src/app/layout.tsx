@@ -67,7 +67,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   href="/shopping-list"
                   className="font-medium text-emerald-700 hover:underline"
                 >
-                  買い物リストを作成
+                  食材リストを作成
+                </Link>
+                <Link
+                  href="/shopping-lists"
+                  className="font-medium text-emerald-700 hover:underline"
+                >
+                  買い物リスト
                 </Link>
                 <Link href="/family" className="text-gray-500 hover:underline">
                   {familyName ?? "家族設定"}

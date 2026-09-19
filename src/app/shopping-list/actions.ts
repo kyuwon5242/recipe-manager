@@ -1,77 +1,92 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { runShoppingListAgent, type ShoppingListResult } from "@/lib/shopping-list/agent";
-import type { NeededIngredient } from "@/lib/shopping-list/types";
+import { getCurrentFamilyId } from "@/lib/family/current";
 
-export type GenerateShoppingListState = {
-  result: ShoppingListResult | null;
-  error: string | null;
-};
-
-type RecipeIngredientRow = {
+export type CreateShoppingListItemInput = {
+  name: string;
   quantity: number | null;
   unit: string | null;
-  ingredients_master: { name: string } | null;
+  category: string;
 };
 
-function aggregateIngredients(rows: RecipeIngredientRow[]): NeededIngredient[] {
-  const map = new Map<string, NeededIngredient>();
+const MAX_LISTS_PER_PERSON = 3;
 
-  for (const row of rows) {
-    const name = row.ingredients_master?.name;
-    if (!name) continue;
-    const unit = row.unit ?? null;
-    const key = `${name}__${unit ?? ""}`;
-    const existing = map.get(key);
-
-    if (existing) {
-      if (existing.quantity != null && row.quantity != null) {
-        existing.quantity += row.quantity;
-      } else {
-        existing.quantity = null;
-      }
-    } else {
-      map.set(key, { name, quantity: row.quantity, unit });
-    }
-  }
-
-  return Array.from(map.values());
+function formatJapaneseTitle(date: Date): string {
+  const formatted = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+  return `${formatted}の買い物リスト`;
 }
 
-export async function generateShoppingList(
-  _prevState: GenerateShoppingListState,
-  formData: FormData
-): Promise<GenerateShoppingListState> {
-  const recipeIds = formData.getAll("recipe_id").map(String);
-  const stockText = String(formData.get("stock_text") ?? "");
-
-  if (recipeIds.length === 0) {
-    return { result: null, error: "レシピを1つ以上選択してください" };
+export async function createShoppingList(items: CreateShoppingListItemInput[]) {
+  if (items.length === 0) {
+    throw new Error("食材リストが空です");
   }
 
   const supabase = await createClient();
-  const { data: rows, error } = await supabase
-    .from("recipe_ingredients")
-    .select("quantity, unit, ingredients_master(name)")
-    .in("recipe_id", recipeIds)
-    .returns<RecipeIngredientRow[]>();
-
-  if (error) {
-    return { result: null, error: `食材の取得に失敗しました: ${error.message}` };
+  const familyId = await getCurrentFamilyId();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("ログインが必要です");
   }
 
-  const needed = aggregateIngredients(rows ?? []);
+  const { count, error: countError } = await supabase
+    .from("shopping_lists")
+    .select("id", { count: "exact", head: true })
+    .eq("family_id", familyId)
+    .eq("created_by", user.id);
 
-  if (needed.length === 0) {
-    return { result: null, error: "選択したレシピに材料が登録されていません" };
+  if (countError) {
+    throw new Error(`買い物リスト件数の確認に失敗しました: ${countError.message}`);
+  }
+  if ((count ?? 0) >= MAX_LISTS_PER_PERSON) {
+    throw new Error(
+      `買い物リストは1人${MAX_LISTS_PER_PERSON}件までです。先に不要なリストを削除してください。`
+    );
   }
 
-  try {
-    const result = await runShoppingListAgent(needed, stockText);
-    return { result, error: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "不明なエラーが発生しました";
-    return { result: null, error: `買い物リストの生成に失敗しました: ${message}` };
+  const { data: list, error: listError } = await supabase
+    .from("shopping_lists")
+    .insert({
+      family_id: familyId,
+      created_by: user.id,
+      title: formatJapaneseTitle(new Date()),
+    })
+    .select("id")
+    .single();
+
+  if (listError) {
+    throw new Error(`買い物リストの作成に失敗しました: ${listError.message}`);
   }
+
+  await Promise.all(
+    items.map((item) =>
+      supabase
+        .from("ingredients_master")
+        .upsert({ name: item.name, category: item.category }, { onConflict: "name" })
+    )
+  );
+
+  const { error: itemsError } = await supabase.from("shopping_list_items").insert(
+    items.map((item, index) => ({
+      shopping_list_id: list.id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      category: item.category,
+      position: index,
+    }))
+  );
+
+  if (itemsError) {
+    throw new Error(`買い物リストの保存に失敗しました: ${itemsError.message}`);
+  }
+
+  redirect(`/shopping-lists/${list.id}`);
 }

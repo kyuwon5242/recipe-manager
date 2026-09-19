@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { SubmitButton } from "@/components/SubmitButton";
 
 type IngredientRow = { name: string; quantity: string; unit: string };
 
@@ -215,12 +216,7 @@ export function RecipeForm({
         />
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-      >
-        {submitLabel}
-      </button>
+      <SubmitButton label={submitLabel} pendingLabel="保存中..." />
     </form>
   );
 }

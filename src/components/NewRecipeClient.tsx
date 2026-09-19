@@ -23,18 +23,21 @@ export function NewRecipeClient() {
   const [url, setUrl] = useState("");
   const [isExtracting, startExtract] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [formKey, setFormKey] = useState(0);
 
   function handleExtract() {
     if (!url.trim()) return;
     setError(null);
+    setWarning(null);
     startExtract(async () => {
       const result = await extractRecipeFromUrl(url.trim());
       if (!result.ok) {
         setError(result.error);
         return;
       }
+      setWarning(result.warning);
       setPrefill({ recipe: result.recipe, ingredients: result.ingredients });
       setFormKey((k) => k + 1);
     });
@@ -67,6 +70,11 @@ export function NewRecipeClient() {
           </button>
         </div>
         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        {warning ? (
+          <p className="mt-2 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+            ⚠ {warning}
+          </p>
+        ) : null}
       </div>
 
       <RecipeForm
