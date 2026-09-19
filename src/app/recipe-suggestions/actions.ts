@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
+import type { ExistingRecipeSuggestion, NewRecipeIdea } from "@/types/recipe-suggestion";
 
 const ExistingSuggestionSchema = z.object({
   recipe_id: z.string(),
@@ -27,32 +28,18 @@ const NewIdeaSchema = z.object({
   ingredients: z.array(NewIdeaIngredientSchema),
 });
 
-const MenuSuggestionSchema = z.object({
+const RecipeSuggestionSchema = z.object({
   from_existing: z.array(ExistingSuggestionSchema),
   new_ideas: z.array(NewIdeaSchema),
 });
 
-export type MenuSuggestionResult = {
-  from_existing: { recipe_id: string; title: string; reason: string }[];
-  new_ideas: {
-    title: string;
-    reason: string;
-    recipe: {
-      title: string;
-      category: string | null;
-      genre: string | null;
-      servings: number | null;
-      instructions: string | null;
-      memo: string | null;
-      recipe_url: string | null;
-      photo_url: string | null;
-    };
-    ingredients: { name: string; quantity: string; unit: string }[];
-  }[];
+export type RecipeSuggestionResult = {
+  from_existing: ExistingRecipeSuggestion[];
+  new_ideas: NewRecipeIdea[];
 };
 
-export type MenuSuggestionState = {
-  result: MenuSuggestionResult | null;
+export type RecipeSuggestionState = {
+  result: RecipeSuggestionResult | null;
   error: string | null;
 };
 
@@ -74,10 +61,10 @@ function todayInJapanese(): string {
   }).format(new Date());
 }
 
-export async function suggestMenu(
-  _prevState: MenuSuggestionState,
+export async function suggestRecipes(
+  _prevState: RecipeSuggestionState,
   formData: FormData
-): Promise<MenuSuggestionState> {
+): Promise<RecipeSuggestionState> {
   const request = String(formData.get("request") ?? "").trim();
   if (!request) {
     return { result: null, error: "食べたいものや気分を入力してください" };
@@ -106,7 +93,7 @@ export async function suggestMenu(
 
   const client = createAnthropicClient();
 
-  const systemPrompt = `あなたは家庭の献立提案アシスタントです。本日は${todayInJapanese()}です。
+  const systemPrompt = `あなたは家庭のレシピ提案アシスタントです。本日は${todayInJapanese()}です。
 ユーザーの要望(気分・食べたいジャンル・手持ちの食材・季節など、自由な内容)に応じて、次の2種類の提案を行ってください。
 
 1. from_existing: 登録済みレシピ一覧の中から、要望に合うものを選ぶ(該当するレシピが無ければ空配列でよい)。recipe_idは必ず与えられた一覧のidをそのまま使うこと。
@@ -124,7 +111,7 @@ export async function suggestMenu(
       max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      output_config: { format: zodOutputFormat(MenuSuggestionSchema), effort: "medium" },
+      output_config: { format: zodOutputFormat(RecipeSuggestionSchema), effort: "medium" },
     });
 
     const parsed = response.parsed_output;

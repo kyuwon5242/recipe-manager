@@ -37,5 +37,6 @@ export type BuilderRecipe = {
   title: string;
   category: string | null;
   genre: string | null;
+  servings: number | null;
   ingredients: BuilderIngredient[];
 };

@@ -2,10 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { createShoppingList } from "@/app/shopping-list/actions";
+import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import type { BuilderRecipe, DraftItem } from "@/types/shopping-list";
 
 const DEFAULT_CATEGORY = "未分類";
 const CATEGORY_SUGGESTIONS = ["野菜", "肉・魚", "調味料", "乳製品・卵", "主食", DEFAULT_CATEGORY];
+const RECIPE_TABS = ["すべて", ...GENRE_TABS] as const;
 
 type NeededIngredient = {
   key: string;
@@ -14,6 +16,8 @@ type NeededIngredient = {
   unit: string | null;
   category: string;
 };
+
+type OwnedEntry = { checked: boolean; quantity: string };
 
 function isRedirectError(err: unknown): boolean {
   return (
@@ -25,9 +29,19 @@ function isRedirectError(err: unknown): boolean {
   );
 }
 
-export function IngredientListBuilder({ recipes }: { recipes: BuilderRecipe[] }) {
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
-  const [ownedQuantities, setOwnedQuantities] = useState<Record<string, string>>({});
+export function IngredientListBuilder({
+  recipes,
+  initialSelectedIds = [],
+}: {
+  recipes: BuilderRecipe[];
+  initialSelectedIds?: string[];
+}) {
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(
+    () => new Set(initialSelectedIds)
+  );
+  const [servingsTargets, setServingsTargets] = useState<Record<string, number>>({});
+  const [ownedState, setOwnedState] = useState<Record<string, OwnedEntry>>({});
+  const [activeTab, setActiveTab] = useState<(typeof RECIPE_TABS)[number]>("すべて");
   const [step, setStep] = useState<"select" | "draft">("select");
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
@@ -35,16 +49,26 @@ export function IngredientListBuilder({ recipes }: { recipes: BuilderRecipe[] })
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isConfirming, startConfirm] = useTransition();
 
+  const visibleRecipes = useMemo(() => {
+    if (activeTab === "すべて") return recipes;
+    return recipes.filter((recipe) => bucketGenre(recipe.genre) === activeTab);
+  }, [recipes, activeTab]);
+
   const neededIngredients = useMemo<NeededIngredient[]>(() => {
     const map = new Map<string, NeededIngredient>();
     for (const recipe of recipes) {
       if (!selectedRecipeIds.has(recipe.id)) continue;
+      const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : null;
+      const target = servingsTargets[recipe.id] ?? baseServings ?? 1;
+      const multiplier = baseServings ? target / baseServings : 1;
+
       for (const ingredient of recipe.ingredients) {
         const key = `${ingredient.name}__${ingredient.unit ?? ""}`;
+        const scaledQuantity = ingredient.quantity != null ? ingredient.quantity * multiplier : null;
         const existing = map.get(key);
         if (existing) {
-          if (existing.quantity != null && ingredient.quantity != null) {
-            existing.quantity += ingredient.quantity;
+          if (existing.quantity != null && scaledQuantity != null) {
+            existing.quantity += scaledQuantity;
           } else {
             existing.quantity = null;
           }
@@ -52,7 +76,7 @@ export function IngredientListBuilder({ recipes }: { recipes: BuilderRecipe[] })
           map.set(key, {
             key,
             name: ingredient.name,
-            quantity: ingredient.quantity,
+            quantity: scaledQuantity,
             unit: ingredient.unit,
             category: ingredient.category ?? DEFAULT_CATEGORY,
           });
@@ -60,45 +84,77 @@ export function IngredientListBuilder({ recipes }: { recipes: BuilderRecipe[] })
       }
     }
     return Array.from(map.values());
-  }, [selectedRecipeIds, recipes]);
+  }, [selectedRecipeIds, recipes, servingsTargets]);
 
-  function toggleRecipe(id: string) {
+  const neededByCategory = useMemo(() => {
+    const order: string[] = [];
+    const grouped = new Map<string, NeededIngredient[]>();
+    for (const ingredient of neededIngredients) {
+      if (!grouped.has(ingredient.category)) {
+        grouped.set(ingredient.category, []);
+        order.push(ingredient.category);
+      }
+      grouped.get(ingredient.category)!.push(ingredient);
+    }
+    return order.map((category) => ({ category, items: grouped.get(category)! }));
+  }, [neededIngredients]);
+
+  function toggleRecipe(id: string, recipe: BuilderRecipe) {
     setSelectedRecipeIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        setServingsTargets((prevTargets) =>
+          prevTargets[id] != null
+            ? prevTargets
+            : { ...prevTargets, [id]: recipe.servings && recipe.servings > 0 ? recipe.servings : 1 }
+        );
+      }
       return next;
     });
+  }
+
+  function toggleOwned(key: string) {
+    setOwnedState((prev) => {
+      const current = prev[key] ?? { checked: false, quantity: "" };
+      return { ...prev, [key]: { ...current, checked: !current.checked } };
+    });
+  }
+
+  function setOwnedQuantity(key: string, value: string) {
+    setOwnedState((prev) => ({ ...prev, [key]: { checked: true, quantity: value } }));
   }
 
   function handleGenerateDraft() {
     const items: DraftItem[] = [];
     for (const ingredient of neededIngredients) {
-      const ownedRaw = ownedQuantities[ingredient.key]?.trim();
-      const owned = ownedRaw ? Number(ownedRaw) : 0;
-
-      if (ingredient.quantity == null) {
-        if (owned > 0) continue;
-        items.push({
-          key: crypto.randomUUID(),
-          name: ingredient.name,
-          quantity: null,
-          unit: ingredient.unit,
-          category: ingredient.category,
-        });
+      const owned = ownedState[ingredient.key];
+      if (owned?.checked) {
+        const qtyRaw = owned.quantity.trim();
+        if (!qtyRaw || ingredient.quantity == null) {
+          continue;
+        }
+        const shortfall = ingredient.quantity - Number(qtyRaw);
+        if (shortfall > 0) {
+          items.push({
+            key: crypto.randomUUID(),
+            name: ingredient.name,
+            quantity: shortfall,
+            unit: ingredient.unit,
+            category: ingredient.category,
+          });
+        }
         continue;
       }
-
-      const shortfall = ingredient.quantity - owned;
-      if (shortfall > 0) {
-        items.push({
-          key: crypto.randomUUID(),
-          name: ingredient.name,
-          quantity: shortfall,
-          unit: ingredient.unit,
-          category: ingredient.category,
-        });
-      }
+      items.push({
+        key: crypto.randomUUID(),
+        name: ingredient.name,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        category: ingredient.category,
+      });
     }
 
     setDraftItems(items);
@@ -304,53 +360,119 @@ export function IngredientListBuilder({ recipes }: { recipes: BuilderRecipe[] })
             レシピが登録されていません。先にレシピを登録してください。
           </p>
         ) : (
-          <div className="mt-2 space-y-2 rounded-md border border-gray-200 p-3">
-            {recipes.map((recipe) => (
-              <label key={recipe.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={selectedRecipeIds.has(recipe.id)}
-                  onChange={() => toggleRecipe(recipe.id)}
-                />
-                <span>
-                  {recipe.title}
-                  <span className="ml-1 text-gray-400">
-                    {[recipe.category, recipe.genre].filter(Boolean).join(" / ")}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
+          <>
+            <div className="mt-2 flex flex-wrap gap-2 border-b border-gray-200">
+              {RECIPE_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`border-b-2 px-3 py-1.5 text-sm font-medium ${
+                    activeTab === tab
+                      ? "border-emerald-600 text-emerald-700"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 space-y-2 rounded-md border border-gray-200 p-3">
+              {visibleRecipes.length === 0 ? (
+                <p className="text-sm text-gray-500">該当するレシピがありません。</p>
+              ) : (
+                visibleRecipes.map((recipe) => {
+                  const isSelected = selectedRecipeIds.has(recipe.id);
+                  return (
+                    <div key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
+                      <label className="flex flex-1 items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRecipe(recipe.id, recipe)}
+                        />
+                        <span>
+                          {recipe.title}
+                          <span className="ml-1 text-gray-400">
+                            {[recipe.category, recipe.genre].filter(Boolean).join(" / ")}
+                          </span>
+                        </span>
+                      </label>
+                      {isSelected ? (
+                        <div className="flex shrink-0 items-center gap-1 text-xs text-gray-500">
+                          <span>人前</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={
+                              servingsTargets[recipe.id] ??
+                              (recipe.servings && recipe.servings > 0 ? recipe.servings : 1)
+                            }
+                            onChange={(e) =>
+                              setServingsTargets((prev) => ({
+                                ...prev,
+                                [recipe.id]: Number(e.target.value) || 1,
+                              }))
+                            }
+                            className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
         )}
       </div>
 
-      {neededIngredients.length > 0 ? (
+      {neededByCategory.length > 0 ? (
         <div>
           <label className="block text-sm font-medium text-gray-700">
-            必要な食材(手持ちの分量があれば入力してください)
+            必要な食材(手持ちがあればチェックし、分量が分かれば入力してください)
           </label>
-          <div className="mt-2 space-y-2 rounded-md border border-gray-200 p-3">
-            {neededIngredients.map((ingredient) => (
-              <div key={ingredient.key} className="flex items-center justify-between gap-2 text-sm">
-                <span>
-                  {ingredient.name}
-                  <span className="ml-2 text-gray-400">
-                    必要: {ingredient.quantity != null ? ingredient.quantity : "適量"}
-                    {ingredient.unit ?? ""}
-                  </span>
-                </span>
-                <div className="flex shrink-0 items-center gap-1">
-                  <span className="text-xs text-gray-400">手持ち</span>
-                  <input
-                    type="number"
-                    value={ownedQuantities[ingredient.key] ?? ""}
-                    onChange={(e) =>
-                      setOwnedQuantities((prev) => ({ ...prev, [ingredient.key]: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                  />
-                  <span className="w-8 text-xs text-gray-400">{ingredient.unit ?? ""}</span>
+          <div className="mt-2 space-y-4">
+            {neededByCategory.map(({ category, items }) => (
+              <div key={category} className="rounded-md border border-gray-200 p-3">
+                <h3 className="mb-2 text-xs font-semibold text-gray-500">{category}</h3>
+                <div className="space-y-2">
+                  {items.map((ingredient) => {
+                    const owned = ownedState[ingredient.key] ?? { checked: false, quantity: "" };
+                    return (
+                      <div
+                        key={ingredient.key}
+                        className="flex items-center justify-between gap-2 text-sm"
+                      >
+                        <label className="flex flex-1 items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={owned.checked}
+                            onChange={() => toggleOwned(ingredient.key)}
+                          />
+                          <span>
+                            {ingredient.name}
+                            <span className="ml-2 text-gray-400">
+                              必要: {ingredient.quantity != null ? ingredient.quantity : "適量"}
+                              {ingredient.unit ?? ""}
+                            </span>
+                          </span>
+                        </label>
+                        {owned.checked ? (
+                          <div className="flex shrink-0 items-center gap-1">
+                            <input
+                              type="number"
+                              value={owned.quantity}
+                              onChange={(e) => setOwnedQuantity(ingredient.key, e.target.value)}
+                              placeholder="分量(任意)"
+                              className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                            />
+                            <span className="w-8 text-xs text-gray-400">{ingredient.unit ?? ""}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}

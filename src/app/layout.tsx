@@ -58,10 +58,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {user ? (
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <Link
-                  href="/menu-suggestions"
+                  href="/recipe-suggestions"
                   className="font-medium text-emerald-700 hover:underline"
                 >
-                  メニュー提案
+                  レシピ提案
+                </Link>
+                <Link
+                  href="/menu-plan"
+                  className="font-medium text-emerald-700 hover:underline"
+                >
+                  献立作成
                 </Link>
                 <Link
                   href="/shopping-list"

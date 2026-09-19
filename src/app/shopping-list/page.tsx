@@ -15,15 +15,29 @@ type RecipeRow = {
   title: string;
   category: string | null;
   genre: string | null;
+  servings: number | null;
   recipe_ingredients: IngredientRow[];
 };
 
-export default async function ShoppingListPage() {
+export default async function ShoppingListPage({
+  searchParams,
+}: PageProps<"/shopping-list">) {
+  const params = await searchParams;
+  const preselectedParam = params.recipes;
+  const preselected = (
+    Array.isArray(preselectedParam)
+      ? preselectedParam.join(",")
+      : (preselectedParam ?? "")
+  )
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
   const supabase = await createClient();
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select(
-      "id, title, category, genre, recipe_ingredients(quantity, unit, ingredients_master(name, category))"
+      "id, title, category, genre, servings, recipe_ingredients(quantity, unit, ingredients_master(name, category))"
     )
     .order("created_at", { ascending: false })
     .returns<RecipeRow[]>();
@@ -37,6 +51,7 @@ export default async function ShoppingListPage() {
     title: recipe.title,
     category: recipe.category,
     genre: recipe.genre,
+    servings: recipe.servings,
     ingredients: recipe.recipe_ingredients
       .filter((ri) => ri.ingredients_master)
       .map((ri) => ({
@@ -51,9 +66,9 @@ export default async function ShoppingListPage() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-bold">食材リストを作成</h1>
       <p className="mt-2 text-sm text-gray-500">
-        作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの分量を入力すると、不足分だけの食材リストを作成できます。
+        作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
       </p>
-      <IngredientListBuilder recipes={builderRecipes} />
+      <IngredientListBuilder recipes={builderRecipes} initialSelectedIds={preselected} />
     </div>
   );
 }
