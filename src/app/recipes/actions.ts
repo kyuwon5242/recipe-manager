@@ -190,3 +190,18 @@ export async function deleteRecipe(id: string) {
   revalidatePath("/recipes");
   redirect("/recipes");
 }
+
+export async function toggleFavorite(id: string, nextValue: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("recipes")
+    .update({ is_favorite: nextValue })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`いいねの更新に失敗しました: ${error.message}`);
+  }
+
+  revalidatePath("/recipes");
+  revalidatePath(`/recipes/${id}`);
+}

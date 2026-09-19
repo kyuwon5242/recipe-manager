@@ -8,6 +8,10 @@ export type Recipe = {
   memo: string | null;
   recipe_url: string | null;
   photo_url: string | null;
+  is_favorite: boolean;
+  family_id: string;
+  created_by: string;
+  updated_by: string;
   created_at: string;
   updated_at: string;
 };

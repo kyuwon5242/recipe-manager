@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 export type SignupState = {
@@ -22,8 +23,17 @@ export async function signUpWithPassword(
     return { error: "パスワードは6文字以上で入力してください", message: null };
   }
 
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = headersList.get("x-forwarded-proto") ?? "http";
+  const origin = `${protocol}://${host}`;
+
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
+  });
 
   if (error) {
     return { error: `登録に失敗しました: ${error.message}`, message: null };
