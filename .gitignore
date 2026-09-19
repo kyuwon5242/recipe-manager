@@ -37,6 +37,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# bulk import: 個人データ・外部サイトからの抽出内容を含むため非コミット
+/scripts/urls.txt
+/scripts/bulk-recipes.sql
+/scripts/bulk-import-log.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
