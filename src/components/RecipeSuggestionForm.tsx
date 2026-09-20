@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
 import { NewRecipeIdeaCard } from "@/components/NewRecipeIdeaCard";
 import {
   suggestRecipes,
@@ -39,37 +38,18 @@ export function RecipeSuggestionForm() {
       ) : null}
 
       {state.result ? (
-        <div className="space-y-8">
-          <section>
-            <h2 className="text-lg font-semibold">登録済みレシピからの提案</h2>
-            {state.result.from_existing.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">
-                合いそうな登録済みレシピは見つかりませんでした。
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-2">
-                {state.result.from_existing.map((item) => (
-                  <li key={item.recipe_id}>
-                    <ExistingRecipeSuggestionCard suggestion={item} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold">AIによる新しいレシピ案</h2>
-            {state.result.new_ideas.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">新しい提案はありません。</p>
-            ) : (
-              <ul className="mt-2 space-y-3">
-                {state.result.new_ideas.map((idea, i) => (
-                  <NewRecipeIdeaCard key={i} idea={idea} />
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+        <section>
+          <h2 className="text-lg font-semibold">新しいレシピ案</h2>
+          {state.result.new_ideas.length === 0 ? (
+            <p className="mt-2 text-sm text-gray-500">提案が見つかりませんでした。</p>
+          ) : (
+            <ul className="mt-2 space-y-3">
+              {state.result.new_ideas.map((idea, i) => (
+                <NewRecipeIdeaCard key={i} idea={idea} />
+              ))}
+            </ul>
+          )}
+        </section>
       ) : null}
     </div>
   );

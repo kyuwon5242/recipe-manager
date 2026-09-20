@@ -61,13 +61,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   href="/recipe-suggestions"
                   className="font-medium text-emerald-700 hover:underline"
                 >
-                  レシピ提案
+                  新レシピ提案
                 </Link>
                 <Link
                   href="/menu-plan"
                   className="font-medium text-emerald-700 hover:underline"
                 >
-                  献立作成
+                  献立提案
                 </Link>
                 <Link
                   href="/shopping-list"

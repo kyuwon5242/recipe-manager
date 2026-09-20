@@ -1,13 +1,13 @@
 import { RecipeSuggestionForm } from "@/components/RecipeSuggestionForm";
 
-export const metadata = { title: "レシピ提案" };
+export const metadata = { title: "新レシピ提案" };
 
 export default function RecipeSuggestionsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold">レシピを提案してもらう</h1>
+      <h1 className="text-2xl font-bold">新レシピを提案してもらう</h1>
       <p className="mt-2 text-sm text-gray-500">
-        気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。登録済みのレシピから探すほか、AIが新しいレシピ案も考えます。
+        気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。AIが新しいレシピ案を考えます。
       </p>
       <RecipeSuggestionForm />
     </div>

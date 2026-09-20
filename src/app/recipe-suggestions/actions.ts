@@ -4,13 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
-import type { ExistingRecipeSuggestion, NewRecipeIdea } from "@/types/recipe-suggestion";
-
-const ExistingSuggestionSchema = z.object({
-  recipe_id: z.string(),
-  title: z.string(),
-  reason: z.string(),
-});
+import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 
 const NewIdeaIngredientSchema = z.object({
   name: z.string(),
@@ -29,12 +23,10 @@ const NewIdeaSchema = z.object({
 });
 
 const RecipeSuggestionSchema = z.object({
-  from_existing: z.array(ExistingSuggestionSchema),
   new_ideas: z.array(NewIdeaSchema),
 });
 
 export type RecipeSuggestionResult = {
-  from_existing: ExistingRecipeSuggestion[];
   new_ideas: NewRecipeIdea[];
 };
 
@@ -81,11 +73,9 @@ export async function suggestRecipes(
   }
 
   const recipeSummaries = (recipes ?? []).map((r) => ({
-    id: r.id,
     title: r.title,
     category: r.category,
     genre: r.genre,
-    servings: r.servings,
     ingredients: r.recipe_ingredients
       .map((ri) => ri.ingredients_master?.name)
       .filter((name): name is string => Boolean(name)),
@@ -93,15 +83,13 @@ export async function suggestRecipes(
 
   const client = createAnthropicClient();
 
-  const systemPrompt = `あなたは家庭のレシピ提案アシスタントです。本日は${todayInJapanese()}です。
-ユーザーの要望(気分・食べたいジャンル・手持ちの食材・季節など、自由な内容)に応じて、次の2種類の提案を行ってください。
-
-1. from_existing: 登録済みレシピ一覧の中から、要望に合うものを選ぶ(該当するレシピが無ければ空配列でよい)。recipe_idは必ず与えられた一覧のidをそのまま使うこと。
-2. new_ideas: 登録済みレシピに十分マッチするものが無い場合、または要望をより満たせる場合に、あなたが新しいレシピ案を考案する。材料と手順も具体的に書くこと。的外れな場合や登録済みレシピで十分な場合は空配列でよい。
+  const systemPrompt = `あなたは家庭の新レシピ提案アシスタントです。本日は${todayInJapanese()}です。
+ユーザーの要望(気分・食べたいジャンル・手持ちの食材・季節など、自由な内容)に応じて、あなたが新しいレシピ案を複数考案してください。材料と手順を具体的に書くこと。
+参考として登録済みレシピ一覧を渡すので、既に登録されているレシピとほぼ同じ内容の提案は避け、目先を変えた新しい提案をしてください。
 
 季節や旬の食材について聞かれた場合は、日本の一般的な季節感(本日の日付)をもとに判断してください。`;
 
-  const userPrompt = `【ユーザーの要望】\n${request}\n\n【登録済みレシピ一覧】\n${JSON.stringify(
+  const userPrompt = `【ユーザーの要望】\n${request}\n\n【参考: 登録済みレシピ一覧(重複を避けるため)】\n${JSON.stringify(
     recipeSummaries
   )}`;
 
@@ -121,7 +109,6 @@ export async function suggestRecipes(
 
     return {
       result: {
-        from_existing: parsed.from_existing,
         new_ideas: parsed.new_ideas.map((idea) => ({
           title: idea.title,
           reason: idea.reason,

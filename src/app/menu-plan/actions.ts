@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import type { NewRecipeIdea, RecipePrefill } from "@/types/recipe-suggestion";
 
+const GENRE_ORDER = ["主食", "主菜", "副菜", "汁物"] as const;
+const DEFAULT_SERVINGS = 2;
+
 const NewRecipeSchema = z.object({
   category: z.string().nullable(),
   genre: z.string().nullable(),
@@ -65,16 +68,31 @@ function todayInJapanese(): string {
   }).format(new Date());
 }
 
+function buildSlotLabels(formData: FormData): string[] {
+  const labels: string[] = [];
+  for (const genre of GENRE_ORDER) {
+    const raw = formData.get(`count_${genre}`);
+    const count = raw ? Math.max(0, Math.floor(Number(raw))) : 0;
+    if (count === 1) {
+      labels.push(genre);
+    } else if (count > 1) {
+      for (let i = 1; i <= count; i++) {
+        labels.push(`${genre}${i}`);
+      }
+    }
+  }
+  return labels;
+}
+
 export async function suggestMealPlan(
   _prevState: MealPlanState,
   formData: FormData
 ): Promise<MealPlanState> {
-  const servings = Number(formData.get("servings") ?? "2") || 2;
   const request = String(formData.get("request") ?? "").trim();
-  const slots = formData.getAll("slots").map(String);
+  const slots = buildSlotLabels(formData);
 
   if (slots.length === 0) {
-    return { result: null, error: "含めたい品目を1つ以上選択してください" };
+    return { result: null, error: "含めたい品目を1品以上指定してください" };
   }
 
   const supabase = await createClient();
@@ -100,20 +118,20 @@ export async function suggestMealPlan(
 
   const client = createAnthropicClient();
 
-  const systemPrompt = `あなたは家庭の献立作成アシスタントです。本日は${todayInJapanese()}です。
-ユーザーの人数・条件をもとに、指定された品目(${slots.join("・")})それぞれについて1品ずつを組み合わせた「今日の献立」を1セットだけ提案してください。
+  const systemPrompt = `あなたは家庭の献立提案アシスタントです。本日は${todayInJapanese()}です。
+ユーザーの条件をもとに、指定された品目(${slots.join(
+    "・"
+  )})それぞれに1品ずつ、一貫性のある「今日の献立」を1セットだけ提案してください。品目ラベルの先頭(主食/主菜/副菜/汁物)がその品目の種類を表し、同じ種類が複数指定されている場合は連番になっています。出力するslotsの各slotフィールドには、指定された品目ラベルをそのまま1つずつ使ってください。
 
 各品目について:
 - 登録済みレシピ一覧の中に適したものがあれば、それを選び recipe_id にそのidを指定してください(new_recipeはnullにする)。
-- 適したものがなければ、あなたが新しいレシピ案を考案してください(recipe_idはnullにし、new_recipeに材料・手順を具体的に記入する)。
+- 適したものがなければ、あなたが新しいレシピ案を考案してください(recipe_idはnullにし、new_recipeに材料・手順を具体的に記入する)。新しいレシピ案の人数は、一般的な家庭向けの分量(${DEFAULT_SERVINGS}人前程度)を目安にしてください。実際の人数調整は後の工程で行います。
 
 品目全体で栄養バランスや味付けの重複(同じ食材・同じ味付けばかりにならない)に配慮し、一貫性のある1セットの献立にしてください。`;
 
-  const userPrompt = `【人数】${servings}人前\n【含めたい品目】${slots.join(
-    "、"
-  )}\n【条件】${request || "(特になし)"}\n\n【登録済みレシピ一覧】\n${JSON.stringify(
-    recipeSummaries
-  )}`;
+  const userPrompt = `【含めたい品目】${slots.join("、")}\n【条件】${
+    request || "(特になし)"
+  }\n\n【登録済みレシピ一覧】\n${JSON.stringify(recipeSummaries)}`;
 
   try {
     const response = await client.messages.parse({
@@ -145,7 +163,7 @@ export async function suggestMealPlan(
         title: s.title,
         category: newRecipe?.category ?? null,
         genre: newRecipe?.genre ?? s.slot,
-        servings: newRecipe?.servings ?? servings,
+        servings: newRecipe?.servings ?? DEFAULT_SERVINGS,
         instructions: newRecipe?.instructions ?? null,
         memo: null,
         recipe_url: null,

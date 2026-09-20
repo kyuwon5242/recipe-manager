@@ -5,10 +5,9 @@ import Link from "next/link";
 import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
 import { NewRecipeIdeaCard } from "@/components/NewRecipeIdeaCard";
 import { suggestMealPlan, type MealPlanState } from "@/app/menu-plan/actions";
-import { GENRE_TABS } from "@/lib/recipe-genre";
 
 const initialState: MealPlanState = { result: null, error: null };
-const SLOT_OPTIONS = GENRE_TABS.filter((g) => g !== "その他");
+const SLOT_GENRES = ["主食", "主菜", "副菜", "汁物"] as const;
 
 export function MealPlanForm() {
   const [state, formAction, isPending] = useActionState(suggestMealPlan, initialState);
@@ -25,25 +24,27 @@ export function MealPlanForm() {
     <div className="mt-6 space-y-6">
       <form action={formAction} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">人数</label>
-          <input
-            type="number"
-            name="servings"
-            min={1}
-            defaultValue={2}
-            className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">含めたい品目</label>
-          <div className="mt-1 flex flex-wrap gap-3">
-            {SLOT_OPTIONS.map((slot) => (
-              <label key={slot} className="flex items-center gap-1 text-sm">
-                <input type="checkbox" name="slots" value={slot} defaultChecked />
-                {slot}
+          <label className="block text-sm font-medium text-gray-700">
+            含めたい品目(品数)
+          </label>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {SLOT_GENRES.map((genre) => (
+              <label key={genre} className="flex items-center gap-2 text-sm">
+                {genre}
+                <input
+                  type="number"
+                  name={`count_${genre}`}
+                  min={0}
+                  max={5}
+                  defaultValue={1}
+                  className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                />
               </label>
             ))}
           </div>
+          <p className="mt-1 text-xs text-gray-400">
+            人数はレシピが決まった後、食材リスト作成の画面で調整できます。
+          </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">条件(任意)</label>
