@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMealPlanTray } from "@/lib/meal-plan-tray/context";
 import { readDragPayload } from "@/lib/meal-plan-tray/drag";
 import { registerRecipeIdea } from "@/app/recipes/actions";
-import { TRAY_GENRES } from "@/types/meal-plan-tray";
+import { TRAY_GENRES, type TrayGenre } from "@/types/meal-plan-tray";
 
 export function MealPlanTrayPanel() {
   const { slots, setCount, assign, clearSlot, setServings } = useMealPlanTray();
@@ -16,6 +16,21 @@ export function MealPlanTrayPanel() {
 
   const filledSlots = slots.filter((s) => s.assignment);
   const ideaCount = filledSlots.filter((s) => s.assignment?.kind === "idea").length;
+
+  // 品数を減らすと、はみ出した枠(末尾側)は設定ごと破棄される
+  // (lib/meal-plan-tray/context.tsxのrebuildGenreSlots参照)。設定済みの
+  // レシピが失われる場合は、確認なしに消えてしまわないよう一言確認する。
+  function handleCountChange(genre: TrayGenre, nextCount: number) {
+    const current = slots.filter((s) => s.genre === genre);
+    const discarded = current.slice(nextCount).filter((s) => s.assignment);
+    if (discarded.length > 0) {
+      const ok = window.confirm(
+        `${genre}の設定済みレシピが${discarded.length}件削除されます。よろしいですか?`
+      );
+      if (!ok) return;
+    }
+    setCount(genre, nextCount);
+  }
 
   function handleDrop(slotId: string, e: React.DragEvent) {
     e.preventDefault();
@@ -75,7 +90,7 @@ export function MealPlanTrayPanel() {
                 min={0}
                 max={5}
                 value={count}
-                onChange={(e) => setCount(genre, Number(e.target.value) || 0)}
+                onChange={(e) => handleCountChange(genre, Number(e.target.value) || 0)}
                 className="w-14 rounded-md border border-gray-300 px-2 py-1 text-sm"
               />
             </div>
