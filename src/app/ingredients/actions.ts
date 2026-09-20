@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
+import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/categories";
 
 const ClusterSchema = z.object({
   canonical_name: z.string(),
@@ -74,7 +75,7 @@ export async function cleanupIngredients(
         model: "claude-opus-5",
         max_tokens: 8000,
         system:
-          "あなたは料理の食材名マスタを整理するアシスタントです。与えられた食材名一覧を、実質的に同じ食材を指すものごとにグループ化してください。商品名・銘柄・パッケージサイズなどの違い(例:「マンジョウ米麹こだわり仕込み本みりん」と「みりん」)は同じグループにまとめてください。判断に迷う場合はまとめずに単独のグループとしてください。各グループには、最も一般的でシンプルな名前をcanonical_nameとして選び、member_namesにはそのグループに属する元の名前を全て含めてください(1件だけのグループでも構いません)。categoryには、野菜/肉・魚/調味料/乳製品・卵/主食/その他 のいずれか適切なものを入れてください。すべての入力名が、いずれか1つのグループのmember_namesに過不足なく(重複や漏れなく)含まれるようにしてください。",
+          `あなたは料理の食材名マスタを整理するアシスタントです。与えられた食材名一覧を、実質的に同じ食材を指すものごとにグループ化してください。商品名・銘柄・パッケージサイズなどの違い(例:「マンジョウ米麹こだわり仕込み本みりん」と「みりん」)は同じグループにまとめてください。判断に迷う場合はまとめずに単独のグループとしてください。各グループには、最も一般的でシンプルな名前をcanonical_nameとして選び、member_namesにはそのグループに属する元の名前を全て含めてください(1件だけのグループでも構いません)。categoryには、${INGREDIENT_CATEGORIES.join("/")} のうち、スーパーの売り場として最も適切なものを入れてください(例:小麦粉・パン粉・片栗粉・乾物・缶詰は「粉類・乾物・缶詰」、豆腐・油揚げ・納豆は「豆腐・大豆製品」、米・パン・麺類は「米・パン・麺」)。すべての入力名が、いずれか1つのグループのmember_namesに過不足なく(重複や漏れなく)含まれるようにしてください。`,
         messages: [
           {
             role: "user",

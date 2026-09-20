@@ -4,18 +4,29 @@ import { useMemo, useState, useTransition } from "react";
 import { createShoppingList } from "@/app/shopping-list/actions";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
+import { INGREDIENT_CATEGORIES, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
+import { formatBaseQuantity, normalizeUnit, type UnitGroup } from "@/lib/ingredients/units";
 import type { BuilderRecipe, DraftItem, InitialSelection } from "@/types/shopping-list";
 
-const DEFAULT_CATEGORY = "未分類";
-const CATEGORY_SUGGESTIONS = ["野菜", "肉・魚", "調味料", "乳製品・卵", "主食", DEFAULT_CATEGORY];
+const DEFAULT_CATEGORY = UNCATEGORIZED_LABEL;
+const CATEGORY_SUGGESTIONS = [...INGREDIENT_CATEGORIES, DEFAULT_CATEGORY];
 const RECIPE_TABS = ["すべて", ...GENRE_TABS] as const;
+
+// 同じ食材でもレシピによって単位がバラバラなことがある(人参の「240g」と
+// 「1本」、みりんの「大さじ」と「小さじ」など)。g/kg・ml/大さじ/小さじ等の
+// 換算可能な単位は合算した1つの数量にまとめ、「1本」のような個数単位は
+// 換算できないため、同じ食材名の下に別セグメントとして並べて表示する。
+type QuantitySegment = {
+  segmentKey: string;
+  quantity: number | null;
+  unit: string | null;
+};
 
 type NeededIngredient = {
   key: string;
   name: string;
-  quantity: number | null;
-  unit: string | null;
   category: string;
+  segments: QuantitySegment[];
 };
 
 type OwnedEntry = { checked: boolean; quantity: string };
@@ -57,6 +68,9 @@ export function IngredientListBuilder({
   const [draggingCategory, setDraggingCategory] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isConfirming, startConfirm] = useTransition();
+  // 献立トレイなどから選択済みの状態で遷移してきた場合は、冗長にならないよう
+  // レシピ選択欄を畳んでおく。何も選択されていない通常アクセス時は開いたまま。
+  const [showRecipePicker, setShowRecipePicker] = useState(initialSelections.length === 0);
 
   const visibleRecipes = useMemo(() => {
     const filtered =
@@ -67,7 +81,10 @@ export function IngredientListBuilder({
   }, [recipes, activeTab]);
 
   const neededIngredients = useMemo<NeededIngredient[]>(() => {
-    const map = new Map<string, NeededIngredient>();
+    type Accumulator = { quantity: number | null; unit: string | null; group?: UnitGroup };
+    const order: string[] = [];
+    const byName = new Map<string, { category: string; segments: Map<string, Accumulator> }>();
+
     for (const recipe of recipes) {
       if (!selectedRecipeIds.has(recipe.id)) continue;
       const baseServings = recipe.servings && recipe.servings > 0 ? recipe.servings : null;
@@ -75,27 +92,47 @@ export function IngredientListBuilder({
       const multiplier = baseServings ? target / baseServings : 1;
 
       for (const ingredient of recipe.ingredients) {
-        const key = `${ingredient.name}__${ingredient.unit ?? ""}`;
+        const name = ingredient.name;
+        if (!byName.has(name)) {
+          byName.set(name, { category: ingredient.category ?? DEFAULT_CATEGORY, segments: new Map() });
+          order.push(name);
+        }
+        const entry = byName.get(name)!;
         const scaledQuantity = ingredient.quantity != null ? ingredient.quantity * multiplier : null;
-        const existing = map.get(key);
+        const normalized = normalizeUnit(ingredient.unit);
+        const segKey = normalized ? normalized.group : ingredient.unit ?? "";
+        const addedValue =
+          normalized && scaledQuantity != null ? scaledQuantity * normalized.factor : scaledQuantity;
+
+        const existing = entry.segments.get(segKey);
         if (existing) {
-          if (existing.quantity != null && scaledQuantity != null) {
-            existing.quantity += scaledQuantity;
-          } else {
-            existing.quantity = null;
-          }
+          existing.quantity =
+            existing.quantity != null && addedValue != null ? existing.quantity + addedValue : null;
         } else {
-          map.set(key, {
-            key,
-            name: ingredient.name,
-            quantity: scaledQuantity,
-            unit: ingredient.unit,
-            category: ingredient.category ?? DEFAULT_CATEGORY,
+          entry.segments.set(segKey, {
+            quantity: addedValue,
+            unit: normalized ? null : ingredient.unit,
+            group: normalized?.group,
           });
         }
       }
     }
-    return Array.from(map.values());
+
+    return order.map((name) => {
+      const entry = byName.get(name)!;
+      const segments: QuantitySegment[] = Array.from(entry.segments.entries()).map(([segKey, seg]) => {
+        if (seg.group) {
+          const formatted = seg.quantity != null ? formatBaseQuantity(seg.group, seg.quantity) : null;
+          return {
+            segmentKey: `${name}__${segKey}`,
+            quantity: formatted?.quantity ?? null,
+            unit: formatted?.unit ?? (seg.group === "weight" ? "g" : "ml"),
+          };
+        }
+        return { segmentKey: `${name}__${segKey}`, quantity: seg.quantity, unit: seg.unit };
+      });
+      return { key: name, name, category: entry.category, segments };
+    });
   }, [selectedRecipeIds, recipes, servingsTargets]);
 
   const neededByCategory = useMemo(() => {
@@ -139,34 +176,53 @@ export function IngredientListBuilder({
     setOwnedState((prev) => ({ ...prev, [key]: { checked: true, quantity: value } }));
   }
 
+  function isCategoryFullyOwned(items: NeededIngredient[]): boolean {
+    return items.every((ing) => ing.segments.every((seg) => ownedState[seg.segmentKey]?.checked));
+  }
+
+  function toggleCategoryOwned(items: NeededIngredient[]) {
+    const nextChecked = !isCategoryFullyOwned(items);
+    setOwnedState((prev) => {
+      const next = { ...prev };
+      for (const ing of items) {
+        for (const seg of ing.segments) {
+          next[seg.segmentKey] = { checked: nextChecked, quantity: "" };
+        }
+      }
+      return next;
+    });
+  }
+
   function handleGenerateDraft() {
     const items: DraftItem[] = [];
     for (const ingredient of neededIngredients) {
-      const owned = ownedState[ingredient.key];
-      if (owned?.checked) {
-        const qtyRaw = owned.quantity.trim();
-        if (!qtyRaw || ingredient.quantity == null) {
+      for (const seg of ingredient.segments) {
+        const owned = ownedState[seg.segmentKey];
+        if (owned?.checked) {
+          const qtyRaw = owned.quantity.trim();
+          if (!qtyRaw || seg.quantity == null) {
+            continue;
+          }
+          const shortfall = seg.quantity - Number(qtyRaw);
+          if (shortfall > 0) {
+            items.push({
+              key: crypto.randomUUID(),
+              name: ingredient.name,
+              quantity: shortfall,
+              unit: seg.unit,
+              category: ingredient.category,
+            });
+          }
           continue;
         }
-        const shortfall = ingredient.quantity - Number(qtyRaw);
-        if (shortfall > 0) {
-          items.push({
-            key: crypto.randomUUID(),
-            name: ingredient.name,
-            quantity: shortfall,
-            unit: ingredient.unit,
-            category: ingredient.category,
-          });
-        }
-        continue;
+        items.push({
+          key: crypto.randomUUID(),
+          name: ingredient.name,
+          quantity: seg.quantity,
+          unit: seg.unit,
+          category: ingredient.category,
+        });
       }
-      items.push({
-        key: crypto.randomUUID(),
-        name: ingredient.name,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit,
-        category: ingredient.category,
-      });
     }
 
     setDraftItems(items);
@@ -366,12 +422,23 @@ export function IngredientListBuilder({
   return (
     <div className="mt-6 space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700">レシピを選択</label>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700">レシピを選択</label>
+          {recipes.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowRecipePicker((v) => !v)}
+              className="text-xs text-emerald-700 hover:underline"
+            >
+              {showRecipePicker ? "閉じる" : "変更する"}
+            </button>
+          ) : null}
+        </div>
         {recipes.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">
             レシピが登録されていません。先にレシピを登録してください。
           </p>
-        ) : (
+        ) : showRecipePicker ? (
           <>
             <div className="mt-2 flex flex-wrap gap-2 border-b border-gray-200">
               {RECIPE_TABS.map((tab) => (
@@ -449,6 +516,12 @@ export function IngredientListBuilder({
               )}
             </div>
           </>
+        ) : (
+          <p className="mt-2 text-sm text-gray-600">
+            {selectedRecipeIds.size > 0
+              ? `${selectedRecipeIds.size}件のレシピを選択中です。`
+              : "レシピが選択されていません。"}
+          </p>
         )}
       </div>
 
@@ -458,51 +531,68 @@ export function IngredientListBuilder({
             必要な食材(手持ちがあればチェックし、分量が分かれば入力してください)
           </label>
           <div className="mt-2 space-y-4">
-            {neededByCategory.map(({ category, items }) => (
-              <div key={category} className="rounded-md border border-gray-200 p-3">
-                <h3 className="mb-2 text-xs font-semibold text-gray-500">{category}</h3>
-                <div className="space-y-2">
-                  {items.map((ingredient) => {
-                    const owned = ownedState[ingredient.key] ?? { checked: false, quantity: "" };
-                    return (
-                      <div
-                        key={ingredient.key}
-                        className="flex items-center justify-between gap-2 text-sm"
-                      >
-                        <label className="flex flex-1 items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={owned.checked}
-                            onChange={() => toggleOwned(ingredient.key)}
-                          />
-                          <span>
-                            {ingredient.name}
-                            <span className="ml-2 text-gray-400">
-                              必要:{" "}
-                              {ingredient.quantity != null
-                                ? `${ingredient.quantity}${ingredient.unit ?? ""}`
-                                : ingredient.unit || "適量"}
-                            </span>
-                          </span>
-                        </label>
-                        {owned.checked ? (
-                          <div className="flex shrink-0 items-center gap-1">
-                            <input
-                              type="number"
-                              value={owned.quantity}
-                              onChange={(e) => setOwnedQuantity(ingredient.key, e.target.value)}
-                              placeholder="分量(任意)"
-                              className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                            />
-                            <span className="w-8 text-xs text-gray-400">{ingredient.unit ?? ""}</span>
-                          </div>
-                        ) : null}
+            {neededByCategory.map(({ category, items }) => {
+              const fullyOwned = isCategoryFullyOwned(items);
+              return (
+                <div key={category} className="rounded-md border border-gray-200 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-gray-500">{category}</h3>
+                    <label className="flex items-center gap-1 text-xs text-gray-500">
+                      <input
+                        type="checkbox"
+                        checked={fullyOwned}
+                        onChange={() => toggleCategoryOwned(items)}
+                      />
+                      すべて持っている
+                    </label>
+                  </div>
+                  <div className="space-y-3">
+                    {items.map((ingredient) => (
+                      <div key={ingredient.key} className="text-sm">
+                        <div className="font-medium text-gray-800">{ingredient.name}</div>
+                        <div className="mt-1 space-y-1">
+                          {ingredient.segments.map((seg) => {
+                            const owned = ownedState[seg.segmentKey] ?? { checked: false, quantity: "" };
+                            return (
+                              <div
+                                key={seg.segmentKey}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <label className="flex flex-1 items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={owned.checked}
+                                    onChange={() => toggleOwned(seg.segmentKey)}
+                                  />
+                                  <span className="text-gray-400">
+                                    必要:{" "}
+                                    {seg.quantity != null
+                                      ? `${seg.quantity}${seg.unit ?? ""}`
+                                      : seg.unit || "適量"}
+                                  </span>
+                                </label>
+                                {owned.checked ? (
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <input
+                                      type="number"
+                                      value={owned.quantity}
+                                      onChange={(e) => setOwnedQuantity(seg.segmentKey, e.target.value)}
+                                      placeholder="分量(任意)"
+                                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                    />
+                                    <span className="w-8 text-xs text-gray-400">{seg.unit ?? ""}</span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}

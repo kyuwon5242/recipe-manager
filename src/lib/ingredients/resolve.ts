@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createAnthropicClient } from "@/lib/anthropic/client";
+import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/categories";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -61,7 +62,7 @@ export async function resolveIngredientIds(
       model: "claude-opus-5",
       max_tokens: 4096,
       system:
-        "あなたは料理の食材名を正規化するアシスタントです。新しく登場した食材名(raw_name)ごとに、それが既存の食材マスタ一覧の中の何かと同じ食材であれば、その既存の名前をcanonical_nameにそのまま使ってください(商品名・銘柄・パッケージ表記などの違いを吸収する。例:「マンジョウ米麹こだわり仕込み本みりん」は既存に「みりん」があればそれに統一する)。既存に該当が無ければ、一般的でシンプルな食材名をcanonical_nameとして提案してください(例:「濃口醤油 大瓶」→「醤油」)。categoryには、野菜/肉・魚/調味料/乳製品・卵/主食/その他 のいずれか適切なものを入れてください。",
+        `あなたは料理の食材名を正規化するアシスタントです。新しく登場した食材名(raw_name)ごとに、それが既存の食材マスタ一覧の中の何かと同じ食材であれば、その既存の名前をcanonical_nameにそのまま使ってください(商品名・銘柄・パッケージ表記などの違いを吸収する。例:「マンジョウ米麹こだわり仕込み本みりん」は既存に「みりん」があればそれに統一する)。既存に該当が無ければ、一般的でシンプルな食材名をcanonical_nameとして提案してください(例:「濃口醤油 大瓶」→「醤油」)。categoryには、${INGREDIENT_CATEGORIES.join("/")} のうち、スーパーの売り場として最も適切なものを入れてください(例:小麦粉・パン粉・片栗粉・乾物・缶詰は「粉類・乾物・缶詰」、豆腐・油揚げ・納豆は「豆腐・大豆製品」、米・パン・麺類は「米・パン・麺」)。`,
       messages: [
         {
           role: "user",
