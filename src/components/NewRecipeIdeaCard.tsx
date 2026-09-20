@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RecipeForm } from "@/components/RecipeForm";
+import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { createRecipe } from "@/app/recipes/actions";
 import { setDragPayload } from "@/lib/meal-plan-tray/drag";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
@@ -17,11 +18,14 @@ export function NewRecipeIdeaCard({ idea }: { idea: NewRecipeIdea }) {
     >
       <p className="font-semibold">{idea.title}</p>
       <p className="mt-1 text-sm text-gray-500">{idea.reason}</p>
-      <p className="mt-1 text-xs text-gray-400">献立トレイへドラッグできます(未登録)</p>
+      <div className="mt-2 flex items-center justify-between">
+        <p className="text-xs text-gray-400">献立トレイへドラッグ、またはボタンで追加(未登録)</p>
+        <AddToTrayButton genre={idea.recipe.genre} assignment={{ kind: "idea", idea }} />
+      </div>
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-2 text-sm text-emerald-700 hover:underline"
+        className="mt-2 text-sm text-brand-700 hover:underline"
       >
         {expanded ? "閉じる" : "詳細を見て登録する"}
       </button>

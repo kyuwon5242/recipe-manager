@@ -4,6 +4,7 @@ import { useActionState, useMemo } from "react";
 import Link from "next/link";
 import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
 import { NewRecipeIdeaCard } from "@/components/NewRecipeIdeaCard";
+import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
 import { suggestMealPlan, type MealPlanState } from "@/app/menu-plan/actions";
 
 const initialState: MealPlanState = { result: null, error: null };
@@ -58,11 +59,13 @@ export function MealPlanForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isPending ? "考え中..." : "献立を提案してもらう"}
         </button>
       </form>
+
+      {isPending ? <AIThinkingIndicator label="AIが献立を考え中..." /> : null}
 
       {state.error ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -84,6 +87,7 @@ export function MealPlanForm() {
                       title: slot.title,
                       reason: slot.reason,
                     }}
+                    genre={slot.slot.replace(/\d+$/, "")}
                   />
                 ) : (
                   <ul>
@@ -97,7 +101,7 @@ export function MealPlanForm() {
           {existingIds.length > 0 ? (
             <Link
               href={`/shopping-list?recipes=${existingIds.join(",")}`}
-              className="inline-block rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
             >
               この献立で食材リストを作成
             </Link>

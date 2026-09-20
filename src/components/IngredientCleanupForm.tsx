@@ -14,7 +14,7 @@ export function IngredientCleanupForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isPending ? "整理中...(数十秒かかる場合があります)" : "食材の表記ゆれを整理する"}
         </button>
@@ -27,7 +27,7 @@ export function IngredientCleanupForm() {
       ) : null}
 
       {state.result ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <div className="rounded-md border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
           {state.result.targetCount === 0 ? (
             <p>未分類の食材はありませんでした(AIは呼び出していません)。</p>
           ) : (

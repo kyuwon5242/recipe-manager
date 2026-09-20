@@ -18,11 +18,23 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "自炊レシピ管理",
-    template: "%s | 自炊レシピ管理",
+    default: "レシピマネージャー",
+    template: "%s | レシピマネージャー",
   },
   description: "家族で共有する自炊レシピ管理アプリ",
 };
+
+function ChefHatIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M7.5 9.5a3 3 0 0 1 2.7-4.3 3.3 3.3 0 0 1 6.1-1 3 3 0 0 1 2.7 4.9A3 3 0 0 1 17 15H8a3 3 0 0 1-.5-5.5Z"
+        fill="currentColor"
+      />
+      <rect x="8" y="15" width="9" height="4" rx="1.3" fill="currentColor" />
+    </svg>
+  );
+}
 
 type FamilyNameRow = {
   families: { name: string } | null;
@@ -61,32 +73,35 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-white text-gray-900">
         <header className="border-b border-gray-200">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <Link href="/recipes" className="text-lg font-bold">
-              🍳 自炊レシピ管理
+            <Link href="/recipes" className="flex items-center gap-2 text-lg font-bold">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+                <ChefHatIcon className="h-5 w-5" />
+              </span>
+              レシピマネージャー
             </Link>
             {user ? (
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <Link
                   href="/recipe-suggestions"
-                  className="font-medium text-emerald-700 hover:underline"
+                  className="font-medium text-brand-700 hover:underline"
                 >
                   新レシピ提案
                 </Link>
                 <Link
                   href="/menu-plan"
-                  className="font-medium text-emerald-700 hover:underline"
+                  className="font-medium text-brand-700 hover:underline"
                 >
                   献立提案
                 </Link>
                 <Link
                   href="/shopping-list"
-                  className="font-medium text-emerald-700 hover:underline"
+                  className="font-medium text-brand-700 hover:underline"
                 >
                   食材リストを作成
                 </Link>
                 <Link
                   href="/shopping-lists"
-                  className="font-medium text-emerald-700 hover:underline"
+                  className="font-medium text-brand-700 hover:underline"
                 >
                   買い物リスト
                 </Link>

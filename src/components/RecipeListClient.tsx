@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import { setDragPayload } from "@/lib/meal-plan-tray/drag";
@@ -62,7 +63,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
             onClick={() => setActiveTab(tab)}
             className={`border-b-2 px-3 py-2 text-sm font-medium ${
               activeTab === tab
-                ? "border-emerald-600 text-emerald-700"
+                ? "border-brand-600 text-brand-700"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -124,7 +125,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       genre: recipe.genre,
                     })
                   }
-                  className="block cursor-grab rounded-lg border border-gray-200 p-4 transition hover:border-emerald-500 hover:shadow-sm active:cursor-grabbing"
+                  className="block cursor-grab rounded-lg border border-gray-200 p-4 pb-11 transition hover:border-brand-500 hover:shadow-sm active:cursor-grabbing"
                 >
                   {recipe.photo_url ? (
                     <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md bg-gray-100">
@@ -158,6 +159,18 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                 </Link>
                 <div className="absolute right-3 top-3">
                   <FavoriteButton recipeId={recipe.id} isFavorite={recipe.is_favorite} />
+                </div>
+                <div className="absolute bottom-3 right-3">
+                  <AddToTrayButton
+                    genre={recipe.genre}
+                    assignment={{
+                      kind: "existing",
+                      recipeId: recipe.id,
+                      title: recipe.title,
+                      category: recipe.category,
+                      genre: recipe.genre,
+                    }}
+                  />
                 </div>
               </li>
             );

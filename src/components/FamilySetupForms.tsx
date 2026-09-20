@@ -40,7 +40,7 @@ export function FamilySetupForms() {
           <button
             type="submit"
             disabled={isCreating}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
           >
             {isCreating ? "作成中..." : "家族を作成"}
           </button>
@@ -66,7 +66,7 @@ export function FamilySetupForms() {
           <button
             type="submit"
             disabled={isJoining}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium transition hover:bg-gray-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
             {isJoining ? "参加中..." : "参加する"}
           </button>

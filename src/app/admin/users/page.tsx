@@ -55,7 +55,7 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link href="/admin" className="text-sm text-emerald-700 hover:underline">
+      <Link href="/admin" className="text-sm text-brand-700 hover:underline">
         ← 管理者ダッシュボードに戻る
       </Link>
       <h1 className="mt-2 text-2xl font-bold">ユーザー管理 - {users.length}人</h1>

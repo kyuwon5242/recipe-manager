@@ -74,7 +74,8 @@ export async function resolveIngredientIds(
           )}\n\n【新しく解決したい食材名】\n${JSON.stringify(unmatched)}`,
         },
       ],
-      output_config: { format: zodOutputFormat(ResolutionSchema), effort: "low" },
+      // claude-haiku-4-5はeffortパラメータ非対応のためformatのみ指定する
+      output_config: { format: zodOutputFormat(ResolutionSchema) },
     });
     resolutions = response.parsed_output?.resolutions ?? [];
   } catch {

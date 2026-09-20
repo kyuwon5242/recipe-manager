@@ -84,7 +84,7 @@ export function AdminUserRow({ user }: { user: AdminUserRowData }) {
               disabled={isTogglingSuspend}
               className={`rounded-md border px-2 py-1 text-xs disabled:opacity-50 ${
                 user.isSuspended
-                  ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  ? "border-brand-300 text-brand-700 hover:bg-brand-50"
                   : "border-red-300 text-red-600 hover:bg-red-50"
               }`}
             >

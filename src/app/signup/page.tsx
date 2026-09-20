@@ -23,7 +23,7 @@ export default function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-gray-500">
         既にアカウントをお持ちの方は{" "}
-        <Link href="/login" className="text-emerald-700 hover:underline">
+        <Link href="/login" className="text-brand-700 hover:underline">
           ログイン
         </Link>
       </p>

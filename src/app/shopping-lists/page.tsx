@@ -31,7 +31,7 @@ export default async function ShoppingListsPage() {
         <h1 className="text-2xl font-bold">買い物リスト</h1>
         <Link
           href="/shopping-list"
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
         >
           + 食材リストを作成
         </Link>
@@ -48,7 +48,7 @@ export default async function ShoppingListsPage() {
               <li key={list.id}>
                 <Link
                   href={`/shopping-lists/${list.id}`}
-                  className="block rounded-lg border border-gray-200 p-4 transition hover:border-emerald-500 hover:shadow-sm"
+                  className="block rounded-lg border border-gray-200 p-4 transition hover:border-brand-500 hover:shadow-sm"
                 >
                   <p className="font-semibold">{list.title}</p>
                   <p className="mt-1 text-sm text-gray-500">

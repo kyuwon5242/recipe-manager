@@ -49,7 +49,7 @@ export default async function RecipesPage() {
         <h1 className="text-2xl font-bold">レシピ一覧</h1>
         <Link
           href="/recipes/new"
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800"
         >
           + レシピを登録
         </Link>

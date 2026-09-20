@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { RecipeForm } from "@/components/RecipeForm";
+import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
 import { createRecipe } from "@/app/recipes/actions";
 import { extractRecipeFromUrl } from "@/app/recipes/extract-actions";
 
@@ -64,11 +65,16 @@ export function NewRecipeClient() {
             type="button"
             onClick={handleExtract}
             disabled={isExtracting || !url.trim()}
-            className="shrink-0 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
+            className="shrink-0 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium transition hover:bg-gray-100 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
           >
             {isExtracting ? "解析中..." : "自動入力"}
           </button>
         </div>
+        {isExtracting ? (
+          <div className="mt-2">
+            <AIThinkingIndicator label="AIがページを解析中..." />
+          </div>
+        ) : null}
         {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
         {warning ? (
           <p className="mt-2 rounded-md bg-yellow-50 px-3 py-2 text-sm text-yellow-800">

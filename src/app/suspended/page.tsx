@@ -9,7 +9,7 @@ export default function SuspendedPage() {
       <p className="mt-2 text-sm text-gray-500">
         心当たりがない場合は、家族の管理者にお問い合わせください。
       </p>
-      <Link href="/login" className="mt-6 inline-block text-sm text-emerald-700 hover:underline">
+      <Link href="/login" className="mt-6 inline-block text-sm text-brand-700 hover:underline">
         ログイン画面に戻る
       </Link>
     </div>

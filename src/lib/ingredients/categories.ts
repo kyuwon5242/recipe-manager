@@ -18,3 +18,14 @@ export type IngredientCategory = (typeof INGREDIENT_CATEGORIES)[number];
 // まだ分類(AIによるカテゴリ付与)が行われていない食材に使う表示上のラベル。
 // AIが判断した上での「その他」とは区別する。
 export const UNCATEGORIZED_LABEL = "未分類";
+
+// スーパーの売り場順(このリストの並び)に食材を並べ替えるための比較関数。
+// 未分類や想定外のカテゴリ文字列は末尾に回す。
+export function categoryRank(category: string): number {
+  const index = (INGREDIENT_CATEGORIES as readonly string[]).indexOf(category);
+  return index === -1 ? INGREDIENT_CATEGORIES.length : index;
+}
+
+export function sortByCategoryOrder<T extends { category: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => categoryRank(a.category) - categoryRank(b.category));
+}

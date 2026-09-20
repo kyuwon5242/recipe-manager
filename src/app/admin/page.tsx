@@ -13,7 +13,7 @@ export default async function AdminPage() {
         <li>
           <Link
             href="/admin/recipes"
-            className="block rounded-lg border border-gray-200 p-4 hover:border-emerald-500 hover:shadow-sm"
+            className="block rounded-lg border border-gray-200 p-4 transition hover:border-brand-500 hover:shadow-sm"
           >
             <p className="font-semibold">全レシピの参照・編集</p>
             <p className="mt-1 text-sm text-gray-500">家族を問わず全レシピを確認・編集できます。</p>
@@ -22,7 +22,7 @@ export default async function AdminPage() {
         <li>
           <Link
             href="/admin/users"
-            className="block rounded-lg border border-gray-200 p-4 hover:border-emerald-500 hover:shadow-sm"
+            className="block rounded-lg border border-gray-200 p-4 transition hover:border-brand-500 hover:shadow-sm"
           >
             <p className="font-semibold">ユーザー管理</p>
             <p className="mt-1 text-sm text-gray-500">

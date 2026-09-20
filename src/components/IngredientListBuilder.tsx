@@ -4,7 +4,11 @@ import { useMemo, useState, useTransition } from "react";
 import { createShoppingList } from "@/app/shopping-list/actions";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
-import { INGREDIENT_CATEGORIES, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
+import {
+  INGREDIENT_CATEGORIES,
+  UNCATEGORIZED_LABEL,
+  sortByCategoryOrder,
+} from "@/lib/ingredients/categories";
 import { formatBaseQuantity, normalizeUnit, type UnitGroup } from "@/lib/ingredients/units";
 import type { BuilderRecipe, DraftItem, InitialSelection } from "@/types/shopping-list";
 
@@ -30,6 +34,51 @@ type NeededIngredient = {
 };
 
 type OwnedEntry = { checked: boolean; quantity: string };
+
+// 数量が入っておらず「少々」「適量」のような曖昧な表現の場合は、実質的に
+// 確認不要な項目として控えめに表示する(忙しい人が見るべき項目だけに
+// 目が行くようにするため)。
+const NEGLIGIBLE_UNITS = new Set(["少々", "適量", "ひとつまみ", "お好み", "お好みで"]);
+function isNegligibleSegment(seg: { quantity: number | null; unit: string | null }): boolean {
+  return seg.quantity == null && (!seg.unit || NEGLIGIBLE_UNITS.has(seg.unit));
+}
+
+const STEP_LABELS = ["献立を選ぶ", "食材を確認", "買い物リスト"] as const;
+
+function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
+  return (
+    <ol className="flex flex-wrap items-center gap-x-1 gap-y-2 text-xs">
+      {STEP_LABELS.map((label, i) => {
+        const n = (i + 1) as 1 | 2 | 3;
+        const done = n < current;
+        const active = n === current;
+        return (
+          <li key={label} className="flex items-center gap-1.5">
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                done
+                  ? "bg-brand-600 text-white"
+                  : active
+                    ? "bg-brand-100 text-brand-700 ring-2 ring-brand-500"
+                    : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              {n}
+            </span>
+            <span
+              className={
+                active ? "font-medium text-brand-700" : done ? "text-gray-500" : "text-gray-400"
+              }
+            >
+              {label}
+            </span>
+            {n < 3 ? <span className="mx-1 text-gray-300">→</span> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 function isRedirectError(err: unknown): boolean {
   return (
@@ -71,6 +120,8 @@ export function IngredientListBuilder({
   // 献立トレイなどから選択済みの状態で遷移してきた場合は、冗長にならないよう
   // レシピ選択欄を畳んでおく。何も選択されていない通常アクセス時は開いたまま。
   const [showRecipePicker, setShowRecipePicker] = useState(initialSelections.length === 0);
+
+  const currentStep: 1 | 2 | 3 = step === "draft" ? 3 : selectedRecipeIds.size > 0 ? 2 : 1;
 
   const visibleRecipes = useMemo(() => {
     const filtered =
@@ -226,9 +277,43 @@ export function IngredientListBuilder({
     }
 
     setDraftItems(items);
-    setCategoryOrder(Array.from(new Set(items.map((i) => i.category))));
+    setCategoryOrder(
+      sortByCategoryOrder(
+        Array.from(new Set(items.map((i) => i.category))).map((category) => ({ category }))
+      ).map((c) => c.category)
+    );
     setConfirmError(null);
     setStep("draft");
+  }
+
+  // 手持ちの確認を省略し、必要な食材をそのまま(スーパーの売り場順で)買い物
+  // リストとして確定する近道。「今日はこれで買い物リストを作る」用。
+  function handleQuickCreate() {
+    setConfirmError(null);
+    const items = sortByCategoryOrder(
+      neededIngredients.flatMap((ingredient) =>
+        ingredient.segments.map((seg) => ({
+          name: ingredient.name,
+          quantity: seg.quantity,
+          unit: seg.unit,
+          category: ingredient.category,
+        }))
+      )
+    );
+
+    if (items.length === 0) {
+      setConfirmError("必要な食材がありません。レシピを選択してください");
+      return;
+    }
+
+    startConfirm(async () => {
+      try {
+        await createShoppingList(items);
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
+        setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
+      }
+    });
   }
 
   function updateDraftItem(key: string, patch: Partial<DraftItem>) {
@@ -303,12 +388,13 @@ export function IngredientListBuilder({
   if (step === "draft") {
     return (
       <div className="mt-6 space-y-6">
+        <StepIndicator current={currentStep} />
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">食材リスト(下書き)</h2>
           <button
             type="button"
             onClick={() => setStep("select")}
-            className="text-sm text-emerald-700 hover:underline"
+            className="text-sm text-brand-700 hover:underline"
           >
             ← レシピ選択に戻る
           </button>
@@ -333,7 +419,7 @@ export function IngredientListBuilder({
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleCategoryDrop(category)}
                 className={`rounded-lg border p-3 ${
-                  draggingCategory === category ? "border-emerald-400" : "border-gray-200"
+                  draggingCategory === category ? "border-brand-400" : "border-gray-200"
                 }`}
               >
                 <div
@@ -400,7 +486,7 @@ export function IngredientListBuilder({
         <button
           type="button"
           onClick={addDraftItem}
-          className="text-sm text-emerald-700 hover:underline"
+          className="text-sm text-brand-700 hover:underline"
         >
           + 食材を追加
         </button>
@@ -411,7 +497,7 @@ export function IngredientListBuilder({
           type="button"
           onClick={handleConfirm}
           disabled={isConfirming}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isConfirming ? "登録中..." : "買い物リストとして確定する"}
         </button>
@@ -421,6 +507,7 @@ export function IngredientListBuilder({
 
   return (
     <div className="mt-6 space-y-6">
+      <StepIndicator current={currentStep} />
       <div>
         <div className="flex items-center justify-between">
           <label className="block text-sm font-medium text-gray-700">レシピを選択</label>
@@ -428,7 +515,7 @@ export function IngredientListBuilder({
             <button
               type="button"
               onClick={() => setShowRecipePicker((v) => !v)}
-              className="text-xs text-emerald-700 hover:underline"
+              className="text-xs text-brand-700 hover:underline"
             >
               {showRecipePicker ? "閉じる" : "変更する"}
             </button>
@@ -448,7 +535,7 @@ export function IngredientListBuilder({
                   onClick={() => setActiveTab(tab)}
                   className={`border-b-2 px-3 py-1.5 text-sm font-medium ${
                     activeTab === tab
-                      ? "border-emerald-600 text-emerald-700"
+                      ? "border-brand-600 text-brand-700"
                       : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -553,6 +640,7 @@ export function IngredientListBuilder({
                         <div className="mt-1 space-y-1">
                           {ingredient.segments.map((seg) => {
                             const owned = ownedState[seg.segmentKey] ?? { checked: false, quantity: "" };
+                            const negligible = isNegligibleSegment(seg);
                             return (
                               <div
                                 key={seg.segmentKey}
@@ -564,12 +652,16 @@ export function IngredientListBuilder({
                                     checked={owned.checked}
                                     onChange={() => toggleOwned(seg.segmentKey)}
                                   />
-                                  <span className="text-gray-400">
-                                    必要:{" "}
-                                    {seg.quantity != null
-                                      ? `${seg.quantity}${seg.unit ?? ""}`
-                                      : seg.unit || "適量"}
-                                  </span>
+                                  {negligible ? (
+                                    <span className="text-xs text-gray-300">
+                                      {seg.unit || "適量"}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">
+                                      必要: {seg.quantity}
+                                      {seg.unit ?? ""}
+                                    </span>
+                                  )}
                                 </label>
                                 {owned.checked ? (
                                   <div className="flex shrink-0 items-center gap-1">
@@ -597,14 +689,27 @@ export function IngredientListBuilder({
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={handleGenerateDraft}
-        disabled={selectedRecipeIds.size === 0}
-        className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-      >
-        食材リストを作成
-      </button>
+      {confirmError ? <p className="text-sm text-red-600">{confirmError}</p> : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleGenerateDraft}
+          disabled={selectedRecipeIds.size === 0}
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+        >
+          食材リストを作成
+        </button>
+        <button
+          type="button"
+          onClick={handleQuickCreate}
+          disabled={selectedRecipeIds.size === 0 || isConfirming}
+          className="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+          title="手持ちの確認をせず、必要な食材をそのまま買い物リストにします"
+        >
+          {isConfirming ? "作成中..." : "今日はこれで買い物リストを作る"}
+        </button>
+      </div>
     </div>
   );
 }

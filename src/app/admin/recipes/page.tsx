@@ -27,7 +27,7 @@ export default async function AdminRecipesPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/admin" className="text-sm text-emerald-700 hover:underline">
+      <Link href="/admin" className="text-sm text-brand-700 hover:underline">
         ← 管理者ダッシュボードに戻る
       </Link>
       <h1 className="mt-2 text-2xl font-bold">全レシピ(管理者) - {recipes.length}件</h1>
@@ -37,7 +37,7 @@ export default async function AdminRecipesPage() {
             <div>
               <Link
                 href={`/recipes/${recipe.id}`}
-                className="font-medium text-emerald-700 hover:underline"
+                className="font-medium text-brand-700 hover:underline"
               >
                 {recipe.title}
               </Link>

@@ -147,7 +147,7 @@ export function RecipeForm({
           <button
             type="button"
             onClick={addRow}
-            className="text-sm text-emerald-700 hover:underline"
+            className="text-sm text-brand-700 hover:underline"
           >
             + 材料を追加
           </button>

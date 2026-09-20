@@ -37,7 +37,7 @@ export default async function ShoppingListDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/shopping-lists" className="text-sm text-emerald-700 hover:underline">
+      <Link href="/shopping-lists" className="text-sm text-brand-700 hover:underline">
         ← 買い物リスト一覧に戻る
       </Link>
 

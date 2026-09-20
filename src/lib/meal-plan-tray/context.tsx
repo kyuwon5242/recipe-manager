@@ -52,6 +52,10 @@ type MealPlanTrayContextValue = {
   clearSlot: (slotId: string) => void;
   setServings: (slotId: string, servings: number) => void;
   clearAll: () => void;
+  // ドラッグ&ドロップが使いにくいスマホ向けの、ボタンタップによる追加。
+  // 空いている枠があればそこに、無ければ(上限内で)新しい枠を作って設定する。
+  // 追加できた場合はtrue、その品目の上限に達していてできなかった場合はfalseを返す。
+  addToTray: (genre: TrayGenre, assignment: TraySlotAssignment) => boolean;
 };
 
 const MealPlanTrayContext = createContext<MealPlanTrayContextValue | null>(null);
@@ -102,9 +106,35 @@ export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(() => setSlots([]), []);
 
+  const addToTray = useCallback((genre: TrayGenre, assignment: TraySlotAssignment): boolean => {
+    let added = false;
+    setSlots((prev) => {
+      const emptySlot = prev.find((s) => s.genre === genre && !s.assignment);
+      if (emptySlot) {
+        added = true;
+        return prev.map((s) => (s.id === emptySlot.id ? { ...s, assignment } : s));
+      }
+      const genreCount = prev.filter((s) => s.genre === genre).length;
+      if (genreCount >= MAX_PER_GENRE) {
+        return prev;
+      }
+      added = true;
+      const newSlot: TraySlot = {
+        id: `${genre}-${crypto.randomUUID()}`,
+        genre,
+        servings: 2,
+        assignment,
+      };
+      return [...prev, newSlot].sort(
+        (a, b) => TRAY_GENRES.indexOf(a.genre) - TRAY_GENRES.indexOf(b.genre)
+      );
+    });
+    return added;
+  }, []);
+
   const value = useMemo(
-    () => ({ slots, setCount, assign, clearSlot, setServings, clearAll }),
-    [slots, setCount, assign, clearSlot, setServings, clearAll]
+    () => ({ slots, setCount, assign, clearSlot, setServings, clearAll, addToTray }),
+    [slots, setCount, assign, clearSlot, setServings, clearAll, addToTray]
   );
 
   return <MealPlanTrayContext.Provider value={value}>{children}</MealPlanTrayContext.Provider>;

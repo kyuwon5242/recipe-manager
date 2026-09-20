@@ -61,7 +61,7 @@ export function MealPlanTrayPanel() {
     <aside className="w-full shrink-0 rounded-lg border border-gray-200 p-4 lg:sticky lg:top-4 lg:w-72">
       <h2 className="font-semibold">献立トレイ</h2>
       <p className="mt-1 text-xs text-gray-500">
-        レシピをドラッグ&ドロップして枠に設定してください。
+        レシピをドラッグ&ドロップ、またはカードの「+ 献立トレイに追加」ボタンで枠に設定してください。
       </p>
 
       <div className="mt-3 space-y-1">
@@ -98,7 +98,7 @@ export function MealPlanTrayPanel() {
               onDrop={(e) => handleDrop(slot.id, e)}
               className={`rounded-md border-2 border-dashed p-2 text-xs transition ${
                 dragOverSlot === slot.id
-                  ? "border-emerald-400 bg-emerald-50"
+                  ? "border-brand-400 bg-brand-50"
                   : slot.assignment
                     ? "border-gray-200 bg-gray-50"
                     : "border-gray-200"
@@ -149,7 +149,7 @@ export function MealPlanTrayPanel() {
         type="button"
         onClick={handleProceed}
         disabled={isSubmitting || filledSlots.length === 0}
-        className="mt-4 w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+        className="mt-4 w-full rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
       >
         {isSubmitting ? "登録中..." : "食材リストを作成へ進む"}
       </button>

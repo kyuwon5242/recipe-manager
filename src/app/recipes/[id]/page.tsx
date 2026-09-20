@@ -45,7 +45,7 @@ export default async function RecipeDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link href="/recipes" className="text-sm text-emerald-700 hover:underline">
+      <Link href="/recipes" className="text-sm text-brand-700 hover:underline">
         ← レシピ一覧に戻る
       </Link>
 
@@ -88,7 +88,7 @@ export default async function RecipeDetailPage({
             href={recipe.recipe_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-emerald-700 hover:underline"
+            className="text-brand-700 hover:underline"
           >
             {recipe.recipe_url}
           </a>

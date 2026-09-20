@@ -109,7 +109,7 @@ export default async function FamilyPage() {
           </p>
           <Link
             href="/ingredients"
-            className="mt-2 inline-block text-sm text-emerald-700 hover:underline"
+            className="mt-2 inline-block text-sm text-brand-700 hover:underline"
           >
             食材の整理を開く →
           </Link>

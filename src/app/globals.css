@@ -12,6 +12,22 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ブランドカラー(オレンジ/コーラル)。ボタン・リンクなど「操作色」として
+   emerald-*の代わりに使う。レシピのカテゴリ色分け(category-color.ts)は
+   区別のための独立した8色パレットのため、こちらとは別で維持する。 */
+@theme {
+  --color-brand-50: #fff5f2;
+  --color-brand-100: #ffe8e0;
+  --color-brand-200: #ffccbc;
+  --color-brand-300: #ffab91;
+  --color-brand-400: #ff8a65;
+  --color-brand-500: #ff7043;
+  --color-brand-600: #f4511e;
+  --color-brand-700: #d84315;
+  --color-brand-800: #bf360c;
+  --color-brand-900: #8b2500;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -23,4 +39,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* AI処理待ちなど「動きのある処理中」表示用のアニメーション */
+@keyframes bounce-pot {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+@keyframes steam-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.7; }
+  100% { transform: translateY(-10px) scale(1.4); opacity: 0; }
 }

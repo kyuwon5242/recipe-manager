@@ -67,12 +67,14 @@ export async function cleanupIngredients(
     };
   }
 
-  // 既にカテゴリが設定済みの行は「参考情報」として扱い、AIへの分類対象には
-  // しない。分類対象は未分類(category IS NULL)の行のみに絞ることで、実行の
-  // たびに全件をAIへ投げ直すことを避け、トークン消費を利用実態(新規に増えた
-  // 食材の量)に比例させる。
-  const targets = allRows.filter((r) => r.category === null);
-  const reference = allRows.filter((r) => r.category !== null);
+  // 既に現行タクソノミーのカテゴリが設定済みの行は「参考情報」として扱い、
+  // AIへの分類対象にはしない。分類対象は未分類(category IS NULL)、または
+  // カテゴリ体系の変更(フェーズ8)以前の旧カテゴリ値が残っている行に絞る
+  // ことで、実行のたびに全件をAIへ投げ直すことを避け、トークン消費を利用
+  // 実態(新規追加・旧タクソノミー分)に比例させる。
+  const validCategories = new Set<string>(INGREDIENT_CATEGORIES);
+  const targets = allRows.filter((r) => r.category === null || !validCategories.has(r.category));
+  const reference = allRows.filter((r) => r.category !== null && validCategories.has(r.category));
 
   if (targets.length === 0) {
     return {
@@ -114,7 +116,8 @@ export async function cleanupIngredients(
             )}\n\n【未分類の食材一覧(分類対象)】\n${JSON.stringify(nameChunk)}`,
           },
         ],
-        output_config: { format: zodOutputFormat(ClusterResultSchema), effort: "low" },
+        // claude-haiku-4-5はeffortパラメータ非対応のためformatのみ指定する
+        output_config: { format: zodOutputFormat(ClusterResultSchema) },
       });
       clusters = response.parsed_output?.clusters ?? [];
     } catch (err) {
