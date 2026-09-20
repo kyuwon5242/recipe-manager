@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { IngredientListBuilder } from "@/components/IngredientListBuilder";
+import { ZoneIcon } from "@/components/ZoneIcon";
 import type { BuilderRecipe, InitialSelection } from "@/types/shopping-list";
 
 export const metadata = { title: "食材リストを作成" };
@@ -82,7 +83,10 @@ export default async function ShoppingListPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold">食材リストを作成</h1>
+      <div className="flex items-center gap-3">
+        <ZoneIcon zone="shopping" icon="📝" />
+        <h1 className="text-2xl font-bold">食材リストを作成</h1>
+      </div>
       <p className="mt-2 text-sm text-gray-500">
         作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
       </p>

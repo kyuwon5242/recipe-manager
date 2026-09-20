@@ -125,7 +125,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       genre: recipe.genre,
                     })
                   }
-                  className="block cursor-grab rounded-lg border border-gray-200 p-4 pb-11 transition hover:border-brand-500 hover:shadow-sm active:cursor-grabbing"
+                  className="block cursor-grab rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 active:cursor-grabbing"
                 >
                   {recipe.photo_url ? (
                     <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md bg-gray-100">

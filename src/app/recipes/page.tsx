@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { WithMealPlanTray } from "@/components/WithMealPlanTray";
+import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "レシピ一覧" };
 
@@ -46,10 +47,13 @@ export default async function RecipesPage() {
   return (
     <WithMealPlanTray maxWidth="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">レシピ一覧</h1>
+        <div className="flex items-center gap-3">
+          <ZoneIcon zone="recipe" />
+          <h1 className="text-2xl font-bold">レシピ一覧</h1>
+        </div>
         <Link
           href="/recipes/new"
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800"
         >
           + レシピを登録
         </Link>

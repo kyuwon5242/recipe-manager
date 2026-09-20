@@ -24,7 +24,7 @@ export function ExistingRecipeSuggestionCard({
           genre,
         })
       }
-      className="cursor-grab rounded-lg border border-gray-200 p-4 active:cursor-grabbing"
+      className="cursor-grab rounded-lg border border-gray-200 bg-white p-4 shadow-raised active:cursor-grabbing"
     >
       <Link
         href={`/recipes/${suggestion.recipe_id}`}

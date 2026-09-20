@@ -26,6 +26,15 @@
   --color-brand-700: #d84315;
   --color-brand-800: #bf360c;
   --color-brand-900: #8b2500;
+
+  /* ページ全体の背景色(生成り・まな板色)。カード類は白のまま維持し、
+     その外側だけ温かみのあるトーンにする。 */
+  --color-paper: #faf3e6;
+
+  /* ボタン・カードを立体的に見せるための影。shadow-brandはブランドカラーの
+     ボタン専用(色付きの影)、shadow-raisedは白いカード全般用。 */
+  --shadow-brand: 0 2px 4px rgba(191, 54, 12, 0.25), 0 6px 14px rgba(191, 54, 12, 0.35);
+  --shadow-raised: 0 1px 2px rgba(42, 26, 18, 0.05), 0 6px 16px rgba(42, 26, 18, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {

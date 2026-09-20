@@ -37,7 +37,7 @@ export function FamilySettingsPanel({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-gray-200 p-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="font-semibold">招待コード</h2>
         <p className="mt-1 text-sm text-gray-500">
           このコードを家族に共有すると、招待コードで参加できます。
@@ -67,7 +67,7 @@ export function FamilySettingsPanel({
       </div>
 
       {isOwner ? (
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
           <h2 className="font-semibold">家族の名前を変更</h2>
           <form action={formAction} className="mt-2 flex gap-2">
             <input
@@ -79,7 +79,7 @@ export function FamilySettingsPanel({
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+              className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
             >
               {isPending ? "保存中..." : "保存"}
             </button>

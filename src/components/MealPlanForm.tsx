@@ -59,7 +59,7 @@ export function MealPlanForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isPending ? "考え中..." : "献立を提案してもらう"}
         </button>
@@ -101,7 +101,7 @@ export function MealPlanForm() {
           {existingIds.length > 0 ? (
             <Link
               href={`/shopping-list?recipes=${existingIds.join(",")}`}
-              className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95"
+              className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95"
             >
               この献立で食材リストを作成
             </Link>

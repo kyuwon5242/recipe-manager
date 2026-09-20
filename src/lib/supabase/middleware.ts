@@ -57,7 +57,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
     if (isPublicPath && pathname !== "/suspended") {
       const url = request.nextUrl.clone();
-      url.pathname = "/recipes";
+      url.pathname = "/";
       return NextResponse.redirect(url);
     }
 

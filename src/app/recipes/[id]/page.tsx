@@ -100,7 +100,7 @@ export default async function RecipeDetailPage({
         {ingredients.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">材料が登録されていません。</p>
         ) : (
-          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200">
+          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
             {ingredients.map((ingredient) => (
               <li
                 key={ingredient.id}

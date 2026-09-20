@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/current";
+import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "全レシピ(管理者)" };
 
@@ -30,8 +31,11 @@ export default async function AdminRecipesPage() {
       <Link href="/admin" className="text-sm text-brand-700 hover:underline">
         ← 管理者ダッシュボードに戻る
       </Link>
-      <h1 className="mt-2 text-2xl font-bold">全レシピ(管理者) - {recipes.length}件</h1>
-      <ul className="mt-4 divide-y divide-gray-100 rounded-md border border-gray-200">
+      <div className="mt-2 flex items-center gap-3">
+        <ZoneIcon zone="admin" />
+        <h1 className="text-2xl font-bold">全レシピ(管理者) - {recipes.length}件</h1>
+      </div>
+      <ul className="mt-4 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
         {recipes.map((recipe) => (
           <li key={recipe.id} className="flex items-center justify-between px-4 py-2 text-sm">
             <div>

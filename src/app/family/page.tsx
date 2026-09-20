@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FamilySettingsPanel } from "@/components/FamilySettingsPanel";
+import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "家族設定" };
 
@@ -69,7 +70,10 @@ export default async function FamilyPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold">{family.name}</h1>
+      <div className="flex items-center gap-3">
+        <ZoneIcon zone="family" />
+        <h1 className="text-2xl font-bold">{family.name}</h1>
+      </div>
       <p className="mt-1 text-sm text-gray-500">家族設定</p>
 
       <div className="mt-6">
@@ -81,7 +85,7 @@ export default async function FamilyPage() {
         />
       </div>
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4">
+      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="font-semibold">メンバー ({members?.length ?? 0}人)</h2>
         <ul className="mt-2 divide-y divide-gray-100">
           {(members ?? []).map((member) => (
@@ -102,7 +106,7 @@ export default async function FamilyPage() {
       </section>
 
       {isAdmin ? (
-        <section className="mt-6 rounded-lg border border-gray-200 p-4">
+        <section className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
           <h2 className="font-semibold">食材マスタのメンテナンス</h2>
           <p className="mt-1 text-sm text-gray-500">
             レシピごとの食材名の表記ゆれを整理し、カテゴリを設定します(管理者限定)。

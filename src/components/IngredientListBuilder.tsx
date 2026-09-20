@@ -418,7 +418,7 @@ export function IngredientListBuilder({
                 key={category}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => handleCategoryDrop(category)}
-                className={`rounded-lg border p-3 ${
+                className={`rounded-lg border bg-white p-3 ${
                   draggingCategory === category ? "border-brand-400" : "border-gray-200"
                 }`}
               >
@@ -497,7 +497,7 @@ export function IngredientListBuilder({
           type="button"
           onClick={handleConfirm}
           disabled={isConfirming}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isConfirming ? "登録中..." : "買い物リストとして確定する"}
         </button>
@@ -543,7 +543,7 @@ export function IngredientListBuilder({
                 </button>
               ))}
             </div>
-            <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-gray-200 p-3">
+            <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-gray-200 bg-white p-3">
               {visibleRecipes.length === 0 ? (
                 <p className="text-sm text-gray-500">該当するレシピがありません。</p>
               ) : (
@@ -621,7 +621,7 @@ export function IngredientListBuilder({
             {neededByCategory.map(({ category, items }) => {
               const fullyOwned = isCategoryFullyOwned(items);
               return (
-                <div key={category} className="rounded-md border border-gray-200 p-3">
+                <div key={category} className="rounded-md border border-gray-200 bg-white p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-xs font-semibold text-gray-500">{category}</h3>
                     <label className="flex items-center gap-1 text-xs text-gray-500">
@@ -696,7 +696,7 @@ export function IngredientListBuilder({
           type="button"
           onClick={handleGenerateDraft}
           disabled={selectedRecipeIds.size === 0}
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           食材リストを作成
         </button>

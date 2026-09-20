@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin/current";
 import { AdminUserRow, type AdminUserRowData } from "@/components/AdminUserRow";
+import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "ユーザー管理" };
 
@@ -58,11 +59,14 @@ export default async function AdminUsersPage() {
       <Link href="/admin" className="text-sm text-brand-700 hover:underline">
         ← 管理者ダッシュボードに戻る
       </Link>
-      <h1 className="mt-2 text-2xl font-bold">ユーザー管理 - {users.length}人</h1>
+      <div className="mt-2 flex items-center gap-3">
+        <ZoneIcon zone="admin" />
+        <h1 className="text-2xl font-bold">ユーザー管理 - {users.length}人</h1>
+      </div>
       <p className="mt-1 text-xs text-gray-400">
         管理者権限の付与はSQLから行う運用のため、この画面からは変更できません。
       </p>
-      <ul className="mt-4 divide-y divide-gray-100 rounded-md border border-gray-200">
+      <ul className="mt-4 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
         {users.map((user) => (
           <AdminUserRow key={user.id} user={user} />
         ))}

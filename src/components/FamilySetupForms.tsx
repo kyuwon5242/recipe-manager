@@ -21,7 +21,7 @@ export function FamilySetupForms() {
 
   return (
     <div className="mt-6 space-y-8">
-      <section className="rounded-lg border border-gray-200 p-4">
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="font-semibold">新しく家族を作成する</h2>
         <p className="mt-1 text-sm text-gray-500">
           あなたがownerとなり、招待コードで他の家族を招待できます。
@@ -40,14 +40,14 @@ export function FamilySetupForms() {
           <button
             type="submit"
             disabled={isCreating}
-            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
           >
             {isCreating ? "作成中..." : "家族を作成"}
           </button>
         </form>
       </section>
 
-      <section className="rounded-lg border border-gray-200 p-4">
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
         <h2 className="font-semibold">招待コードで参加する</h2>
         <p className="mt-1 text-sm text-gray-500">
           家族のownerから受け取った招待コードを入力してください。

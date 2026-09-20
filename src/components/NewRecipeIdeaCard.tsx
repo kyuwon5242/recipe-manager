@@ -14,7 +14,7 @@ export function NewRecipeIdeaCard({ idea }: { idea: NewRecipeIdea }) {
     <li
       draggable
       onDragStart={(e) => setDragPayload(e, { kind: "idea", idea })}
-      className="cursor-grab rounded-lg border border-gray-200 p-4 active:cursor-grabbing"
+      className="cursor-grab rounded-lg border border-gray-200 bg-white p-4 shadow-raised active:cursor-grabbing"
     >
       <p className="font-semibold">{idea.title}</p>
       <p className="mt-1 text-sm text-gray-500">{idea.reason}</p>

@@ -64,7 +64,7 @@ export function ShoppingListChecklist({
       {categories.map((category) => (
         <section key={category}>
           <h2 className="text-sm font-semibold text-gray-500">{category}</h2>
-          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200">
+          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
             {grouped.get(category)!.map((item) => (
               <li key={item.id}>
                 <button
