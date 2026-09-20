@@ -59,7 +59,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang="ja"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-paper text-gray-900">
+      <body className="min-h-full flex flex-col bg-paper font-sans text-gray-900">
         <header className="border-b border-gray-200 bg-white">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold">
