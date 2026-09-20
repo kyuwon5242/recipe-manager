@@ -23,6 +23,13 @@ const CARDS: HomeCard[] = [
   { href: "/family", zone: "family", title: "家族設定", desc: "招待コード・メンバー管理" },
 ];
 
+const FLOW_STEPS: { icon: string; label: string }[] = [
+  { icon: "🍳", label: "レシピを選ぶ" },
+  { icon: "🧺", label: "献立トレイに集める" },
+  { icon: "📝", label: "食材を確認する" },
+  { icon: "🛒", label: "買い物リストが完成" },
+];
+
 export default async function HomePage() {
   const supabase = await createClient();
   const {
@@ -42,8 +49,28 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <p className="text-sm text-gray-500">おかえりなさい</p>
-      <h1 className="mt-1 text-2xl font-bold">今日は何を作りますか?</h1>
+      <h1 className="text-2xl font-bold">今日は何を作りますか?</h1>
+
+      <div
+        className="mt-4 flex flex-wrap items-center gap-x-1 gap-y-3 rounded-xl bg-white p-4 shadow-raised"
+        title="献立を決めてから買い物リストができるまでの流れ"
+      >
+        {FLOW_STEPS.map((step, i) => (
+          <div key={step.label} className="flex items-center gap-1">
+            <div className="flex items-center gap-2 rounded-lg bg-paper px-3 py-2">
+              <span aria-hidden="true" className="text-lg">
+                {step.icon}
+              </span>
+              <span className="text-xs font-medium text-gray-700">{step.label}</span>
+            </div>
+            {i < FLOW_STEPS.length - 1 ? (
+              <span aria-hidden="true" className="px-1 text-gray-300">
+                →
+              </span>
+            ) : null}
+          </div>
+        ))}
+      </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {CARDS.map((card) => (

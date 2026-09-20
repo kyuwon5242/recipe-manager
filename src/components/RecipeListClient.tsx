@@ -125,7 +125,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       genre: recipe.genre,
                     })
                   }
-                  className="block cursor-grab rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 active:cursor-grabbing"
+                  className="block h-full cursor-grab rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 active:cursor-grabbing"
                 >
                   {recipe.photo_url ? (
                     <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md bg-gray-100">
@@ -160,7 +160,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                 <div className="absolute right-3 top-3">
                   <FavoriteButton recipeId={recipe.id} isFavorite={recipe.is_favorite} />
                 </div>
-                <div className="absolute bottom-3 right-3">
+                <div className="absolute inset-x-3 bottom-3 flex justify-end">
                   <AddToTrayButton
                     genre={recipe.genre}
                     assignment={{
@@ -170,6 +170,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       category: recipe.category,
                       genre: recipe.genre,
                     }}
+                    className="max-w-full truncate rounded-full border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95"
                   />
                 </div>
               </li>

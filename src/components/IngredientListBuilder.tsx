@@ -497,6 +497,7 @@ export function IngredientListBuilder({
           type="button"
           onClick={handleConfirm}
           disabled={isConfirming}
+          title="この内容で買い物リストを保存し、家族に共有します"
           className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           {isConfirming ? "登録中..." : "買い物リストとして確定する"}
@@ -696,6 +697,7 @@ export function IngredientListBuilder({
           type="button"
           onClick={handleGenerateDraft}
           disabled={selectedRecipeIds.size === 0}
+          title="手持ちの食材を確認しながら、買い物リストの下書きを作ります"
           className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
         >
           食材リストを作成

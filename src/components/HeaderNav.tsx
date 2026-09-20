@@ -5,12 +5,34 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/app/auth/actions";
 import { ZONES, type Zone } from "@/lib/zones";
 
-const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string }[] = [
-  { href: "/recipes", label: "レシピ一覧", zone: "recipe" },
-  { href: "/recipe-suggestions", label: "新レシピ提案", zone: "ai" },
-  { href: "/menu-plan", label: "献立提案", zone: "ai", icon: "🍽️" },
-  { href: "/shopping-list", label: "食材リストを作成", zone: "shopping", icon: "📝" },
-  { href: "/shopping-lists", label: "買い物リスト", zone: "shopping" },
+const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title: string }[] = [
+  { href: "/recipes", label: "レシピ一覧", zone: "recipe", title: "登録済みのレシピを探す・見返す" },
+  {
+    href: "/recipe-suggestions",
+    label: "新レシピ提案",
+    zone: "ai",
+    title: "AIに新しいレシピ案を考えてもらう",
+  },
+  {
+    href: "/menu-plan",
+    label: "献立提案",
+    zone: "ai",
+    icon: "🍽️",
+    title: "品目ごとに献立をまとめて提案してもらう",
+  },
+  {
+    href: "/shopping-list",
+    label: "食材リストを作成",
+    zone: "shopping",
+    icon: "📝",
+    title: "作る予定のレシピから、必要な食材を洗い出す",
+  },
+  {
+    href: "/shopping-lists",
+    label: "買い物リスト",
+    zone: "shopping",
+    title: "確定した買い物リストを家族と共有・チェックする",
+  },
 ];
 
 function pillClass(active: boolean, zone: Zone): string {
@@ -37,6 +59,7 @@ export function HeaderNav({
         <Link
           key={item.href}
           href={item.href}
+          title={item.title}
           className={pillClass(pathname === item.href, item.zone)}
         >
           <span aria-hidden="true">{item.icon ?? ZONES[item.zone].icon}</span>
@@ -45,6 +68,7 @@ export function HeaderNav({
       ))}
       <Link
         href="/family"
+        title="招待コードの確認・メンバー管理"
         className={pillClass(pathname === "/family" || pathname === "/family/setup", "family")}
       >
         <span aria-hidden="true">{ZONES.family.icon}</span>
@@ -53,6 +77,7 @@ export function HeaderNav({
       {isAdmin ? (
         <Link
           href="/admin"
+          title="全レシピ・ユーザー管理など管理者専用の機能"
           className={pillClass(pathname.startsWith("/admin") || pathname === "/ingredients", "admin")}
         >
           <span aria-hidden="true">{ZONES.admin.icon}</span>
