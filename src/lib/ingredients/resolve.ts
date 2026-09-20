@@ -59,7 +59,10 @@ export async function resolveIngredientIds(
   try {
     const client = createAnthropicClient();
     const response = await client.messages.parse({
-      model: "claude-opus-5",
+      // 食材名の名寄せは機械的な分類タスクであり、新レシピ提案などの創造的な
+      // 生成と違ってフロンティア級の推論力を必要としないため、コストの低い
+      // モデルを使う(呼び出し頻度が高くトークンコストが積み上がりやすいため)。
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       system:
         `あなたは料理の食材名を正規化するアシスタントです。新しく登場した食材名(raw_name)ごとに、それが既存の食材マスタ一覧の中の何かと同じ食材であれば、その既存の名前をcanonical_nameにそのまま使ってください(商品名・銘柄・パッケージ表記などの違いを吸収する。例:「マンジョウ米麹こだわり仕込み本みりん」は既存に「みりん」があればそれに統一する)。既存に該当が無ければ、一般的でシンプルな食材名をcanonical_nameとして提案してください(例:「濃口醤油 大瓶」→「醤油」)。categoryには、${INGREDIENT_CATEGORIES.join("/")} のうち、スーパーの売り場として最も適切なものを入れてください(例:小麦粉・パン粉・片栗粉・乾物・缶詰は「粉類・乾物・缶詰」、豆腐・油揚げ・納豆は「豆腐・大豆製品」、米・パン・麺類は「米・パン・麺」)。`,

@@ -28,12 +28,19 @@ export function IngredientCleanupForm() {
 
       {state.result ? (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          <p>
-            {state.result.totalBefore}件 → {state.result.totalAfter}件に整理しました。
-          </p>
-          <p className="mt-1 text-xs">
-            統合: {state.result.mergedCount}件 / カテゴリ設定: {state.result.categorizedCount}件
-          </p>
+          {state.result.targetCount === 0 ? (
+            <p>未分類の食材はありませんでした(AIは呼び出していません)。</p>
+          ) : (
+            <>
+              <p>
+                未分類{state.result.targetCount}件を処理し、{state.result.totalBefore}件 →{" "}
+                {state.result.totalAfter}件に整理しました。
+              </p>
+              <p className="mt-1 text-xs">
+                統合: {state.result.mergedCount}件 / カテゴリ設定: {state.result.categorizedCount}件
+              </p>
+            </>
+          )}
         </div>
       ) : null}
     </div>

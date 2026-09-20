@@ -60,6 +60,13 @@ export default async function FamilyPage() {
     throw new Error(`メンバー一覧の取得に失敗しました: ${membersError.message}`);
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle();
+  const isAdmin = profile?.is_admin ?? false;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="text-2xl font-bold">{family.name}</h1>
@@ -94,18 +101,20 @@ export default async function FamilyPage() {
         </ul>
       </section>
 
-      <section className="mt-6 rounded-lg border border-gray-200 p-4">
-        <h2 className="font-semibold">食材マスタのメンテナンス</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          レシピごとの食材名の表記ゆれを整理し、カテゴリを設定します。
-        </p>
-        <Link
-          href="/ingredients"
-          className="mt-2 inline-block text-sm text-emerald-700 hover:underline"
-        >
-          食材の整理を開く →
-        </Link>
-      </section>
+      {isAdmin ? (
+        <section className="mt-6 rounded-lg border border-gray-200 p-4">
+          <h2 className="font-semibold">食材マスタのメンテナンス</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            レシピごとの食材名の表記ゆれを整理し、カテゴリを設定します(管理者限定)。
+          </p>
+          <Link
+            href="/ingredients"
+            className="mt-2 inline-block text-sm text-emerald-700 hover:underline"
+          >
+            食材の整理を開く →
+          </Link>
+        </section>
+      ) : null}
     </div>
   );
 }

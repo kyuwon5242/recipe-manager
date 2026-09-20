@@ -140,7 +140,10 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
   let parsedOutput: z.infer<typeof ExtractedRecipeSchema> | null;
   try {
     const response = await client.messages.parse({
-      model: "claude-opus-5",
+      // ページ本文からのレシピ抽出も構造化データの読み取りが中心の機械的な
+      // タスクであり、フロンティア級のモデルを必要としないため、コストの低い
+      // モデルを使う。
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       system:
         "あなたはレシピサイトのページからレシピ情報を抽出するアシスタントです。与えられた内容から、レシピ名・カテゴリ(和食/洋食/中華など)・ジャンル(主菜/副菜/汁物など)・何人前か・材料(食材名/数量/単位に分解)・作り方の手順を日本語で抽出してください。読み取れない項目はnullにし、推測で埋めないでください。数量は数値のみをquantityに、単位(個/g/mlなど)はunitに分けてください。is_recipe_pageには、渡された内容が実際にレシピ(材料や作り方を含む)と言えるかどうかをtrue/falseで入れてください。レシピと判断できない、または材料が全く読み取れない場合はis_recipe_pageをfalseにし、ingredientsは空配列にしてください。",
