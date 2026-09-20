@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
+import { resolveIngredientIds } from "@/lib/ingredients/resolve";
+import type { IngredientPrefill, RecipePrefill } from "@/types/recipe-suggestion";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -82,21 +84,23 @@ async function uploadPhotoIfProvided(
   return data.publicUrl;
 }
 
-async function resolveIngredientId(
+async function insertRecipe(
   supabase: SupabaseServerClient,
-  name: string
+  familyId: string,
+  fields: ParsedRecipeFields,
+  photoUrl: string | null
 ): Promise<string> {
-  const { data, error } = await supabase
-    .from("ingredients_master")
-    .upsert({ name }, { onConflict: "name" })
+  const { data: recipe, error } = await supabase
+    .from("recipes")
+    .insert({ ...fields, photo_url: photoUrl, family_id: familyId })
     .select("id")
     .single();
 
   if (error) {
-    throw new Error(`食材マスタの登録に失敗しました: ${error.message}`);
+    throw new Error(`レシピの登録に失敗しました: ${error.message}`);
   }
 
-  return data.id;
+  return recipe.id;
 }
 
 async function saveRecipeIngredients(
@@ -115,14 +119,15 @@ async function saveRecipeIngredients(
 
   if (rows.length === 0) return;
 
-  const ingredientIds = await Promise.all(
-    rows.map((row) => resolveIngredientId(supabase, row.name))
+  const idMap = await resolveIngredientIds(
+    supabase,
+    rows.map((row) => row.name)
   );
 
   const { error: insertError } = await supabase.from("recipe_ingredients").insert(
-    rows.map((row, i) => ({
+    rows.map((row) => ({
       recipe_id: recipeId,
-      ingredient_id: ingredientIds[i],
+      ingredient_id: idMap.get(row.name.trim())!,
       quantity: row.quantity,
       unit: row.unit,
     }))
@@ -140,20 +145,11 @@ export async function createRecipe(formData: FormData) {
   const ingredientRows = parseIngredientRows(formData);
   const photoUrl = await uploadPhotoIfProvided(supabase, formData, familyId);
 
-  const { data: recipe, error } = await supabase
-    .from("recipes")
-    .insert({ ...fields, photo_url: photoUrl, family_id: familyId })
-    .select("id")
-    .single();
-
-  if (error) {
-    throw new Error(`レシピの登録に失敗しました: ${error.message}`);
-  }
-
-  await saveRecipeIngredients(supabase, recipe.id, ingredientRows);
+  const recipeId = await insertRecipe(supabase, familyId, fields, photoUrl);
+  await saveRecipeIngredients(supabase, recipeId, ingredientRows);
 
   revalidatePath("/recipes");
-  redirect(`/recipes/${recipe.id}`);
+  redirect(`/recipes/${recipeId}`);
 }
 
 export async function updateRecipe(id: string, formData: FormData) {
@@ -204,4 +200,45 @@ export async function toggleFavorite(id: string, nextValue: boolean) {
 
   revalidatePath("/recipes");
   revalidatePath(`/recipes/${id}`);
+}
+
+/**
+ * AI提案(新レシピ提案・献立提案・献立トレイ)から、フォームを介さずレシピを
+ * 登録する。redirectはせずIDを返す(呼び出し側で遷移を制御するため)。
+ */
+export async function registerRecipeIdea(idea: {
+  recipe: RecipePrefill;
+  ingredients: IngredientPrefill[];
+}): Promise<string> {
+  const supabase = await createClient();
+  const familyId = await getCurrentFamilyId();
+
+  const title = idea.recipe.title.trim();
+  if (!title) {
+    throw new Error("レシピ名が空です");
+  }
+
+  const fields: ParsedRecipeFields = {
+    title,
+    category: idea.recipe.category,
+    genre: idea.recipe.genre,
+    servings: idea.recipe.servings,
+    instructions: idea.recipe.instructions,
+    memo: idea.recipe.memo,
+    recipe_url: idea.recipe.recipe_url,
+  };
+
+  const ingredientRows: ParsedIngredientRow[] = idea.ingredients
+    .map((ingredient) => ({
+      name: ingredient.name.trim(),
+      quantity: ingredient.quantity.trim() ? Number(ingredient.quantity) : null,
+      unit: ingredient.unit.trim() || null,
+    }))
+    .filter((row) => row.name.length > 0);
+
+  const recipeId = await insertRecipe(supabase, familyId, fields, null);
+  await saveRecipeIngredients(supabase, recipeId, ingredientRows);
+
+  revalidatePath("/recipes");
+  return recipeId;
 }

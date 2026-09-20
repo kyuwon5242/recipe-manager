@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
+import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -94,7 +95,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             ) : null}
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          <MealPlanTrayProvider>{children}</MealPlanTrayProvider>
+        </main>
       </body>
     </html>
   );

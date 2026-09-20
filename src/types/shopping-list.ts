@@ -38,5 +38,11 @@ export type BuilderRecipe = {
   category: string | null;
   genre: string | null;
   servings: number | null;
+  is_favorite: boolean;
   ingredients: BuilderIngredient[];
+};
+
+export type InitialSelection = {
+  id: string;
+  servings: number | null;
 };

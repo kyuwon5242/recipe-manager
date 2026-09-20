@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RecipeListClient } from "@/components/RecipeListClient";
+import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 
 export const metadata = { title: "レシピ一覧" };
 
@@ -43,7 +44,7 @@ export default async function RecipesPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <WithMealPlanTray maxWidth="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">レシピ一覧</h1>
         <Link
@@ -54,6 +55,6 @@ export default async function RecipesPage() {
         </Link>
       </div>
       <RecipeListClient recipes={items} />
-    </div>
+    </WithMealPlanTray>
   );
 }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
+import { setDragPayload } from "@/lib/meal-plan-tray/drag";
 
 type RecipeListItem = {
   id: string;
@@ -113,7 +114,17 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
               <li key={recipe.id} className="relative">
                 <Link
                   href={`/recipes/${recipe.id}`}
-                  className="block rounded-lg border border-gray-200 p-4 transition hover:border-emerald-500 hover:shadow-sm"
+                  draggable
+                  onDragStart={(e) =>
+                    setDragPayload(e, {
+                      kind: "existing",
+                      recipeId: recipe.id,
+                      title: recipe.title,
+                      category: recipe.category,
+                      genre: recipe.genre,
+                    })
+                  }
+                  className="block cursor-grab rounded-lg border border-gray-200 p-4 transition hover:border-emerald-500 hover:shadow-sm active:cursor-grabbing"
                 >
                   {recipe.photo_url ? (
                     <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md bg-gray-100">

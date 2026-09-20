@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FamilySettingsPanel } from "@/components/FamilySettingsPanel";
@@ -91,6 +92,19 @@ export default async function FamilyPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-gray-200 p-4">
+        <h2 className="font-semibold">食材マスタのメンテナンス</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          レシピごとの食材名の表記ゆれを整理し、カテゴリを設定します。
+        </p>
+        <Link
+          href="/ingredients"
+          className="mt-2 inline-block text-sm text-emerald-700 hover:underline"
+        >
+          食材の整理を開く →
+        </Link>
       </section>
     </div>
   );

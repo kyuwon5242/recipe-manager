@@ -3,7 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { createShoppingList } from "@/app/shopping-list/actions";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
-import type { BuilderRecipe, DraftItem } from "@/types/shopping-list";
+import { getCategoryColor } from "@/lib/category-color";
+import type { BuilderRecipe, DraftItem, InitialSelection } from "@/types/shopping-list";
 
 const DEFAULT_CATEGORY = "未分類";
 const CATEGORY_SUGGESTIONS = ["野菜", "肉・魚", "調味料", "乳製品・卵", "主食", DEFAULT_CATEGORY];
@@ -31,15 +32,23 @@ function isRedirectError(err: unknown): boolean {
 
 export function IngredientListBuilder({
   recipes,
-  initialSelectedIds = [],
+  initialSelections = [],
 }: {
   recipes: BuilderRecipe[];
-  initialSelectedIds?: string[];
+  initialSelections?: InitialSelection[];
 }) {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(
-    () => new Set(initialSelectedIds)
+    () => new Set(initialSelections.map((s) => s.id))
   );
-  const [servingsTargets, setServingsTargets] = useState<Record<string, number>>({});
+  const [servingsTargets, setServingsTargets] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    for (const selection of initialSelections) {
+      if (selection.servings != null) {
+        initial[selection.id] = selection.servings;
+      }
+    }
+    return initial;
+  });
   const [ownedState, setOwnedState] = useState<Record<string, OwnedEntry>>({});
   const [activeTab, setActiveTab] = useState<(typeof RECIPE_TABS)[number]>("すべて");
   const [step, setStep] = useState<"select" | "draft">("select");
@@ -50,8 +59,11 @@ export function IngredientListBuilder({
   const [isConfirming, startConfirm] = useTransition();
 
   const visibleRecipes = useMemo(() => {
-    if (activeTab === "すべて") return recipes;
-    return recipes.filter((recipe) => bucketGenre(recipe.genre) === activeTab);
+    const filtered =
+      activeTab === "すべて"
+        ? recipes
+        : recipes.filter((recipe) => bucketGenre(recipe.genre) === activeTab);
+    return [...filtered].sort((a, b) => Number(b.is_favorite) - Number(a.is_favorite));
   }, [recipes, activeTab]);
 
   const neededIngredients = useMemo<NeededIngredient[]>(() => {
@@ -377,12 +389,13 @@ export function IngredientListBuilder({
                 </button>
               ))}
             </div>
-            <div className="mt-2 space-y-2 rounded-md border border-gray-200 p-3">
+            <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-gray-200 p-3">
               {visibleRecipes.length === 0 ? (
                 <p className="text-sm text-gray-500">該当するレシピがありません。</p>
               ) : (
                 visibleRecipes.map((recipe) => {
                   const isSelected = selectedRecipeIds.has(recipe.id);
+                  const color = getCategoryColor(recipe.category);
                   return (
                     <div key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
                       <label className="flex flex-1 items-center gap-2">
@@ -392,10 +405,22 @@ export function IngredientListBuilder({
                           onChange={() => toggleRecipe(recipe.id, recipe)}
                         />
                         <span>
+                          {recipe.is_favorite ? (
+                            <span className="mr-1 text-red-500">♥</span>
+                          ) : null}
                           {recipe.title}
-                          <span className="ml-1 text-gray-400">
-                            {[recipe.category, recipe.genre].filter(Boolean).join(" / ")}
-                          </span>
+                          {recipe.category ? (
+                            <span
+                              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${color.bg} ${color.text}`}
+                            >
+                              {recipe.category}
+                            </span>
+                          ) : null}
+                          {recipe.genre ? (
+                            <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                              {recipe.genre}
+                            </span>
+                          ) : null}
                         </span>
                       </label>
                       {isSelected ? (
@@ -453,8 +478,10 @@ export function IngredientListBuilder({
                           <span>
                             {ingredient.name}
                             <span className="ml-2 text-gray-400">
-                              必要: {ingredient.quantity != null ? ingredient.quantity : "適量"}
-                              {ingredient.unit ?? ""}
+                              必要:{" "}
+                              {ingredient.quantity != null
+                                ? `${ingredient.quantity}${ingredient.unit ?? ""}`
+                                : ingredient.unit || "適量"}
                             </span>
                           </span>
                         </label>
