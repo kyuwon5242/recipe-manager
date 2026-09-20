@@ -35,6 +35,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   } = await supabase.auth.getUser();
 
   let familyName: string | null = null;
+  let isAdmin = false;
   if (user) {
     const { data } = await supabase
       .from("family_members")
@@ -43,6 +44,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       .limit(1)
       .maybeSingle<FamilyNameRow>();
     familyName = data?.families?.name ?? null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    isAdmin = profile?.is_admin ?? false;
   }
 
   return (
@@ -85,6 +93,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/family" className="text-gray-500 hover:underline">
                   {familyName ?? "家族設定"}
                 </Link>
+                {isAdmin ? (
+                  <Link
+                    href="/admin"
+                    className="font-medium text-purple-700 hover:underline"
+                  >
+                    管理者
+                  </Link>
+                ) : null}
                 <span className="text-gray-400">{user.email}</span>
                 <form action={signOut}>
                   <button type="submit" className="text-gray-500 hover:underline">

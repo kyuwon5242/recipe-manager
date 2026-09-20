@@ -59,6 +59,16 @@ function parseIngredientRows(formData: FormData): ParsedIngredientRow[] {
     .filter((row) => row.name.length > 0);
 }
 
+// アップロードを許可する画像形式(SVGは埋め込みスクリプトによる蓄積型XSSの
+// リスクがあるため意図的に除外している)
+const ALLOWED_PHOTO_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
 async function uploadPhotoIfProvided(
   supabase: SupabaseServerClient,
   formData: FormData,
@@ -69,12 +79,19 @@ async function uploadPhotoIfProvided(
     return null;
   }
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : undefined;
-  const path = `${familyId}/${randomUUID()}${ext ? `.${ext}` : ""}`;
+  const ext = ALLOWED_PHOTO_TYPES[file.type];
+  if (!ext) {
+    throw new Error("画像はJPEG/PNG/WebP/GIF形式のみアップロードできます");
+  }
+  if (file.size > MAX_PHOTO_SIZE_BYTES) {
+    throw new Error("画像サイズは5MB以内にしてください");
+  }
+
+  const path = `${familyId}/${randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage
     .from("recipe-photos")
-    .upload(path, file, { contentType: file.type || undefined });
+    .upload(path, file, { contentType: file.type });
 
   if (error) {
     throw new Error(`写真のアップロードに失敗しました: ${error.message}`);

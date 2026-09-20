@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const AUTH_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/suspended"];
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
@@ -31,22 +31,37 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isAuthPath = AUTH_PATHS.includes(pathname) || pathname.startsWith("/auth/callback");
+  const isPublicPath = PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/auth/callback");
 
-  if (!user && !isAuthPath) {
+  if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   if (user) {
-    if (isAuthPath) {
+    if (pathname !== "/suspended") {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_suspended")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profile?.is_suspended) {
+        await supabase.auth.signOut();
+        const url = request.nextUrl.clone();
+        url.pathname = "/suspended";
+        return NextResponse.redirect(url);
+      }
+    }
+
+    if (isPublicPath && pathname !== "/suspended") {
       const url = request.nextUrl.clone();
       url.pathname = "/recipes";
       return NextResponse.redirect(url);
     }
 
-    if (pathname !== "/family/setup") {
+    if (pathname !== "/family/setup" && pathname !== "/suspended") {
       const { data: membership } = await supabase
         .from("family_members")
         .select("family_id")

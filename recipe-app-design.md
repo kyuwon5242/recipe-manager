@@ -371,3 +371,45 @@ Next.js 16の `proxy.ts`(旧middleware)でセッションを毎リクエスト�
 - `ingredients_master`は家族を跨いだ共有辞書だが、`recipe_ingredients`は家族単位のRLSで保護されているため、他家族がまだ参照している重複行は付け替え・削除が失敗する(想定内)。失敗した場合はその1件をスキップして処理を続行する(全体を止めない)
 - 実行には数十秒〜数分かかるため、`/ingredients`ページに `export const maxDuration = 300` を設定し、Vercel上でのタイムアウトを緩和している(Hobbyプランでは60秒が上限のため、件数が多い家族では別途対応が必要になる場合がある)
 - `ingredients_master`への削除操作を許可するRLSポリシーを追加した(migration 0006)
+
+## 13. 管理者機能・セキュリティ対策(フェーズ7)
+
+### 13.1 管理者ロール
+
+`profiles`テーブルに`is_admin`・`is_suspended`の2列を追加(migration 0007)。管理者権限の付与はアプリのUIからは行わず、Supabase SQL Editorから直接`UPDATE`する運用とする(実装複雑化・誤操作防止のため)。
+
+```sql
+update public.profiles set is_admin = true where email = '対象のメールアドレス';
+```
+
+- 判定は`is_family_member()`等と同じ設計の`SECURITY DEFINER`関数`is_admin()`で行い、RLSポリシー内での自己参照的な再帰を避ける
+- 管理者向けRLSポリシーを`recipes`・`recipe_ingredients`・`profiles`・`families`・`family_members`に追加し、家族の垣根を越えた参照・更新(一部削除)を許可する
+- **権限昇格の防止**: 一般ユーザーの「自分のプロフィールを更新できる」ポリシーには列単位の制限がないため、悪意あるクライアントから直接`is_admin`/`is_suspended`を書き換えられる余地があった。`profiles`に`BEFORE UPDATE`トリガー(`protect_profile_admin_fields`)を追加し、更新実行者が管理者でない場合はこの2列を常に元の値に戻すことで、RLSだけに頼らない多層防御とした
+- アプリ層でも`src/lib/admin/current.ts`の`requireAdmin()`で管理者チェックを行い、非管理者には日本語のエラーメッセージ(「管理者権限が必要です」)を表示する。RLSが最終防衛線、`requireAdmin()`はUXと多層防御の両方が目的
+- **不具合の修正(migration 0008)**: 0007のトリガーは「`auth.uid()`から見て管理者でなければ元に戻す」実装だったため、SQL EditorからのUPDATE(PostgRESTのJWTコンテキストを経由せず`auth.uid()`が`null`になる)まで巻き戻してしまい、想定していた「SQL Editorから管理者を付与する」運用そのものが機能しないバグがあった。`auth.uid() is not null and not is_admin()`の場合のみ書き換えを禁止するよう修正した(通常のアプリ利用者は必ずJWTを伴うため`auth.uid()`が`null`になることはなく、保護対象である「一般ユーザーによるPostgREST経由の自己昇格」は引き続き防がれる)
+
+### 13.2 管理者画面
+
+| 画面 | 内容 |
+|---|---|
+| `/admin` | 管理者ダッシュボード。各管理画面へのリンク |
+| `/admin/recipes` | 全家族の全レシピを一覧(所属家族名を表示)。詳細・編集は既存の`/recipes/[id]`・`/recipes/[id]/edit`をそのまま利用(RLSにより権限が自動的に及ぶため、レシピ側のコードは無改修) |
+| `/admin/users` | 全ユーザー一覧。表示名の修正、利用停止/解除の切り替えが可能 |
+
+### 13.3 利用停止(アカウント削除は実装しない)
+
+当初はユーザー削除機能(Supabase Authアカウントの完全削除)を検討したが、これには`service_role`キーの追加導入が必要となるため、ユーザーの判断により**削除機能は実装せず、ログイン不可にする「利用停止」制御のみを追加する**方針に変更した。
+
+- `toggleUserSuspension`(`src/app/admin/actions.ts`)で`profiles.is_suspended`を切り替える。管理者が自分自身を停止することは不可
+- 実際のログインブロックは`src/lib/supabase/middleware.ts`(全リクエストで実行される`updateSession`)で行う。ログイン済みユーザーが`is_suspended = true`の場合、その場で`supabase.auth.signOut()`しセッションを強制終了したうえで`/suspended`へリダイレクトする。Server Actionの呼び出しも同じミドルウェアを通るため、停止後は次のリクエスト(画面遷移・フォーム送信いずれも)で確実に締め出される
+- `/suspended`はログイン不要の公開ページとして、停止された旨と`/login`への導線のみを表示する
+
+### 13.4 Webアプリ基本セキュリティ対策(標準実装ポリシー)
+
+ユーザーの要望により、今後も標準で維持する基本方針として以下を実装した。
+
+- **SQLインジェクション**: 全クエリがSupabaseクライアント経由のパラメータ化クエリであり、生SQLを文字列結合で組み立てている箇所はアプリ本体にはない。唯一の例外である`scripts/bulk-import-recipes.mjs`(ローカルで一度だけ実行する一括登録スクリプト)は、生成するSQL文中の値を`sqlEscape()`でエスケープ済み
+- **XSS**: `dangerouslySetInnerHTML`・`eval`・`new Function`はコードベース上に存在しないことを確認済み。Reactのデフォルトのエスケープに任せる
+- **セキュリティヘッダー**(`next.config.ts`の`headers()`): 全ルートに`X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: strict-origin-when-cross-origin`、`Permissions-Policy`(カメラ・マイク・位置情報を無効化)を付与
+- **ファイルアップロード検証**(`uploadPhotoIfProvided`、`src/app/recipes/actions.ts`): 許可するContent-Typeを`image/jpeg`・`image/png`・`image/webp`・`image/gif`に限定(SVGは埋め込みスクリプトによる蓄積型XSSのリスクがあるため除外)。ファイルサイズは5MBを上限とする。保存先の拡張子はユーザー指定のファイル名からではなく、検証済みContent-Typeから機械的に決定する
+- **既存の対策の再確認**: レシピURL自動登録機能のSSRF対策(http/https以外・ローカル/プライベートIP拒否、9.2節)、Storageのパスを家族IDでスコープする仕組み(8.3節)は本フェーズでも変更なし
