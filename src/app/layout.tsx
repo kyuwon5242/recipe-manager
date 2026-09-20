@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
+import { ManagerFaceIcon } from "@/components/ManagerFaceIcon";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,18 +24,6 @@ export const metadata: Metadata = {
   },
   description: "家族で共有する自炊レシピ管理アプリ",
 };
-
-function ChefHatIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M7.5 9.5a3 3 0 0 1 2.7-4.3 3.3 3.3 0 0 1 6.1-1 3 3 0 0 1 2.7 4.9A3 3 0 0 1 17 15H8a3 3 0 0 1-.5-5.5Z"
-        fill="currentColor"
-      />
-      <rect x="8" y="15" width="9" height="4" rx="1.3" fill="currentColor" />
-    </svg>
-  );
-}
 
 type FamilyNameRow = {
   families: { name: string } | null;
@@ -74,8 +63,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-gray-200">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/recipes" className="flex items-center gap-2 text-lg font-bold">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-                <ChefHatIcon className="h-5 w-5" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50">
+                <ManagerFaceIcon className="h-8 w-8" />
               </span>
               レシピマネージャー
             </Link>

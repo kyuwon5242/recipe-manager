@@ -1,22 +1,30 @@
-// AI応答待ちであることが一目でわかるよう、動きのある「調理中」表示にする。
-// 単なるスピナーより、このアプリらしい親しみやすさを出す狙い。
-export function AIThinkingIndicator({ label = "AIがレシピを考え中..." }: { label?: string }) {
+import { ManagerFaceIcon } from "@/components/ManagerFaceIcon";
+
+// AI応答待ちであることが一目でわかるよう、マネージャーが考えながら
+// メモ帳にペンを走らせている演出にする。単なるスピナーより、このアプリの
+// マスコットらしい親しみやすさを出す狙い。
+export function AIThinkingIndicator({
+  label = "レシピマネージャーが考え中...",
+}: {
+  label?: string;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-      <div className="relative h-8 w-8 shrink-0">
-        <span
-          className="absolute inset-0 flex items-center justify-center text-2xl"
-          style={{ animation: "bounce-pot 1s ease-in-out infinite" }}
-        >
-          🍳
-        </span>
-        <span
-          className="absolute -top-1 left-1 h-1.5 w-1.5 rounded-full bg-brand-300"
-          style={{ animation: "steam-rise 1.2s ease-out infinite" }}
+      <div className="relative h-10 w-11 shrink-0">
+        <ManagerFaceIcon
+          className="absolute left-0 top-0 h-9 w-9"
+          style={{ animation: "nod-think 1.6s ease-in-out infinite" }}
         />
-        <span
-          className="absolute -top-1 left-4 h-1.5 w-1.5 rounded-full bg-brand-300"
-          style={{ animation: "steam-rise 1.2s ease-out infinite 0.4s" }}
+        {/* メモ帳 */}
+        <div className="absolute bottom-0 right-0 h-4 w-5 rounded-[2px] bg-white shadow ring-1 ring-brand-200">
+          <div className="absolute left-0.5 right-1 top-1 h-px bg-brand-200" />
+          <div className="absolute left-0.5 right-1.5 top-2 h-px bg-brand-200" />
+          <div className="absolute left-0.5 right-2 top-3 h-px bg-brand-200" />
+        </div>
+        {/* ペン(左右に小刻みに動いて「書いている」様子を表す) */}
+        <div
+          className="absolute bottom-1.5 right-1 h-3 w-[3px] origin-bottom rounded-full bg-brand-700"
+          style={{ animation: "pencil-write 0.5s ease-in-out infinite" }}
         />
       </div>
       <span>{label}</span>

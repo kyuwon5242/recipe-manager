@@ -1,0 +1,44 @@
+// アプリのマスコット(丸眼鏡の物知りおじさん)。多色イラストのため
+// currentColorではなく固定のパレットで塗る。ヘッダーロゴ・favicon・
+// AI処理中インジケーターで共通利用する。
+export function ManagerFaceIcon({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <svg viewBox="-2 -9 37 37" aria-hidden="true" className={className} style={style}>
+      <ellipse cx="16" cy="18.2" rx="10.2" ry="9.6" fill="#f3b98c" />
+      <ellipse cx="6.6" cy="18.6" rx="2.1" ry="2.6" fill="#f3b98c" />
+      <ellipse cx="25.4" cy="18.6" rx="2.1" ry="2.6" fill="#f3b98c" />
+      {/* 白髪(帽子の下から少しのぞかせる) */}
+      <path d="M6.3 12.5c-.6 2-.3 4 .6 5.6-1.6-.4-2.6-2.6-2.1-4.7.3-1.4 1-1.9 1.5-.9Z" fill="#d8d2c8" />
+      <path d="M25.7 12.5c.6 2 .3 4-.6 5.6 1.6-.4 2.6-2.6 2.1-4.7-.3-1.4-1-1.9-1.5-.9Z" fill="#d8d2c8" />
+      {/* コック帽(縦長のトック。3つの丸山+ひだ+バンド) */}
+      <circle cx="16" cy="-1.8" r="6" fill="#fff" />
+      <circle cx="10.8" cy="0.6" r="4.4" fill="#fff" />
+      <circle cx="21.2" cy="0.6" r="4.4" fill="#fff" />
+      <rect x="10.4" y="1" width="11.2" height="7.4" fill="#fff" />
+      <rect x="9.2" y="7.9" width="13.6" height="4.6" rx="1" fill="#fff" />
+      <path
+        d="M13 2.2v5.3M16 1.6v5.9M19 2.2v5.3"
+        stroke="#f0ddd0"
+        strokeWidth=".55"
+        strokeLinecap="round"
+      />
+      <line x1="10.3" y1="8.4" x2="21.7" y2="8.4" stroke="#f0ddd0" strokeWidth=".5" />
+      <ellipse cx="9.6" cy="19.8" rx="2.3" ry="1.5" fill="#f9a68c" opacity=".65" />
+      <ellipse cx="22.4" cy="19.8" rx="2.3" ry="1.5" fill="#f9a68c" opacity=".65" />
+      <circle cx="11.2" cy="18.1" r="2.5" fill="none" stroke="#5a3f2e" strokeWidth="1.1" />
+      <circle cx="20.8" cy="18.1" r="2.5" fill="none" stroke="#5a3f2e" strokeWidth="1.1" />
+      <line x1="13.7" y1="18.1" x2="18.3" y2="18.1" stroke="#5a3f2e" strokeWidth="1.1" />
+      <circle cx="11.2" cy="18.1" r=".85" fill="#3a2a20" />
+      <circle cx="20.8" cy="18.1" r=".85" fill="#3a2a20" />
+      {/* 白いちょび髭 */}
+      <rect x="13.8" y="20.6" width="4.4" height="2.3" rx="1" fill="#f7f2ec" stroke="#d9cfc2" strokeWidth=".3" />
+      <path d="M13 24q3 1.7 6 0" stroke="#7a5240" strokeWidth=".7" strokeLinecap="round" fill="none" opacity=".45" />
+    </svg>
+  );
+}
