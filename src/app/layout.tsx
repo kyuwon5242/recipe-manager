@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
-import { ManagerFaceIcon } from "@/components/ManagerFaceIcon";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -63,9 +63,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-gray-200">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
             <Link href="/recipes" className="flex items-center gap-2 text-lg font-bold">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50">
-                <ManagerFaceIcon className="h-8 w-8" />
-              </span>
+              <Image
+                src="/manager-icon.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full object-cover"
+              />
               レシピマネージャー
             </Link>
             {user ? (

@@ -1,4 +1,4 @@
-import { ManagerFaceIcon } from "@/components/ManagerFaceIcon";
+import Image from "next/image";
 
 // AI応答待ちであることが一目でわかるよう、マネージャーが考えながら
 // メモ帳にペンを走らせている演出にする。単なるスピナーより、このアプリの
@@ -11,8 +11,12 @@ export function AIThinkingIndicator({
   return (
     <div className="flex items-center gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
       <div className="relative h-10 w-11 shrink-0">
-        <ManagerFaceIcon
-          className="absolute left-0 top-0 h-9 w-9"
+        <Image
+          src="/manager-icon.png"
+          alt=""
+          width={36}
+          height={36}
+          className="absolute left-0 top-0 h-9 w-9 rounded-full object-cover"
           style={{ animation: "nod-think 1.6s ease-in-out infinite" }}
         />
         {/* メモ帳 */}
