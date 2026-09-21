@@ -2,7 +2,20 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { UsageScenarioBanner } from "@/components/UsageScenarioBanner";
+import { HelpPanel } from "@/components/HelpPanel";
 import type { Zone } from "@/lib/zones";
+
+const HELP_ITEMS = [
+  {
+    label: "各カードについて",
+    desc: "レシピ一覧・新レシピ提案・献立提案・食材リストを作成・買い物リスト・家族設定など、機能ごとにカードから移動できます。",
+  },
+  {
+    label: "上のバナーについて",
+    desc: "状況に応じたおすすめの使い方が数秒ごとに切り替わります。下のドットをタップすると好きな使い方をすぐ確認できます。",
+  },
+];
 
 export const metadata = { title: "ホーム" };
 
@@ -21,13 +34,6 @@ const CARDS: HomeCard[] = [
   { href: "/shopping-list", zone: "shopping", icon: "📝", title: "食材リストを作成", desc: "献立から必要な食材を洗い出す" },
   { href: "/shopping-lists", zone: "shopping", title: "買い物リスト", desc: "確定リストを家族と共有・チェック" },
   { href: "/family", zone: "family", title: "家族設定", desc: "招待コード・メンバー管理" },
-];
-
-const FLOW_STEPS: { icon: string; label: string }[] = [
-  { icon: "🍳", label: "レシピを選ぶ" },
-  { icon: "🧺", label: "献立トレイに集める" },
-  { icon: "📝", label: "食材を確認する" },
-  { icon: "🛒", label: "買い物リストが完成" },
 ];
 
 export default async function HomePage() {
@@ -50,28 +56,12 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="text-2xl font-bold">今日は何を作りますか?</h1>
-
-      <div
-        className="mt-4 flex flex-wrap items-center gap-x-1 gap-y-3 rounded-xl bg-white p-4 shadow-raised"
-        title="献立を決めてから買い物リストができるまでの流れ"
-      >
-        {FLOW_STEPS.map((step, i) => (
-          <div key={step.label} className="flex items-center gap-1">
-            <div className="flex items-center gap-2 rounded-lg bg-paper px-3 py-2">
-              <span aria-hidden="true" className="text-lg">
-                {step.icon}
-              </span>
-              <span className="text-xs font-medium text-gray-700">{step.label}</span>
-            </div>
-            {i < FLOW_STEPS.length - 1 ? (
-              <span aria-hidden="true" className="px-1 text-gray-300">
-                →
-              </span>
-            ) : null}
-          </div>
-        ))}
+      <div className="flex items-center gap-2">
+        <h1 className="text-2xl font-bold">今日は何を作りますか?</h1>
+        <HelpPanel title="ホーム" items={HELP_ITEMS} />
       </div>
+
+      <UsageScenarioBanner />
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {CARDS.map((card) => (

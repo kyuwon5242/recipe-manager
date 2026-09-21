@@ -3,8 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { HelpPanel } from "@/components/HelpPanel";
 
 export const metadata = { title: "レシピ一覧" };
+
+const HELP_ITEMS = [
+  { label: "検索・絞り込み", desc: "料理名や食材名で検索したり、品目タブやカテゴリで絞り込めます。" },
+  { label: "お気に入り", desc: "♡アイコンをタップすると、お気に入りのみ表示に切り替えられます。" },
+  {
+    label: "+ 献立トレイに追加",
+    desc: "気になるレシピを献立トレイに集めておくと、あとでまとめて食材リストが作れます。",
+  },
+];
 
 type RecipeRow = {
   id: string;
@@ -47,9 +57,10 @@ export default async function RecipesPage() {
   return (
     <WithMealPlanTray maxWidth="max-w-4xl">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <ZoneIcon zone="recipe" />
           <h1 className="text-2xl font-bold">レシピ一覧</h1>
+          <HelpPanel title="レシピ一覧" items={HELP_ITEMS} />
         </div>
         <Link
           href="/recipes/new"

@@ -4,6 +4,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseHostname = supabaseUrl ? new URL(supabaseUrl).hostname : undefined;
 
 const nextConfig: NextConfig = {
+  // next buildの実行時に1回だけ評価されるため、デプロイのビルド日時として使える
+  env: {
+    BUILD_TIME: new Date().toISOString(),
+  },
   images: {
     remotePatterns: supabaseHostname
       ? [

@@ -41,3 +41,9 @@
   0%, 100% { transform: translateX(-1.5px) rotate(-6deg); }
   50% { transform: translateX(1.5px) rotate(6deg); }
 }
+
+/* ホーム画面の使い方バナー(UsageScenarioBanner)が切り替わるときのフェード */
+@keyframes banner-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

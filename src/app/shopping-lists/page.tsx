@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { HelpPanel } from "@/components/HelpPanel";
 import { formatDateTime } from "@/lib/format-date";
 
 export const metadata = { title: "買い物リスト" };
+
+const HELP_ITEMS = [
+  { label: "作成日時", desc: "各リストの作成日時、上書き保存した場合は更新日時も確認できます。" },
+  {
+    label: "件数の上限について",
+    desc: "買い物リストは1人3件まで保存できます。上限に達すると、作成時に上書き先を選べます。",
+  },
+  { label: "チェック", desc: "詳細画面で食材をタップすると購入済みにできます(自動でまとめて保存されます)。" },
+];
 
 type ShoppingListRow = {
   id: string;
@@ -31,9 +41,10 @@ export default async function ShoppingListsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <ZoneIcon zone="shopping" />
           <h1 className="text-2xl font-bold">買い物リスト</h1>
+          <HelpPanel title="買い物リスト" items={HELP_ITEMS} />
         </div>
         <Link
           href="/shopping-list"

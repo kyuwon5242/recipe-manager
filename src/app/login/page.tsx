@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { LoginForm } from "@/components/LoginForm";
-import { getAppVersion } from "@/lib/version";
+import { getAppVersion, getBuildTime } from "@/lib/version";
 
 export const metadata = { title: "ログイン" };
 
@@ -43,7 +43,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </Link>
       </p>
 
-      <p className="mt-10 text-center text-xs text-gray-300">version {getAppVersion()}</p>
+      <p className="mt-10 text-center text-xs text-gray-300">
+        version {getAppVersion()}
+        {getBuildTime() ? ` ・ ビルド: ${getBuildTime()}` : ""}
+      </p>
     </div>
   );
 }

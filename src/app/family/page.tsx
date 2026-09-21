@@ -5,9 +5,23 @@ import { FamilySettingsPanel } from "@/components/FamilySettingsPanel";
 import { FamilyStoreSettings } from "@/components/FamilyStoreSettings";
 import { FamilyDefaultItemsSettings } from "@/components/FamilyDefaultItemsSettings";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { HelpPanel } from "@/components/HelpPanel";
 import type { FamilyDefaultItem, FamilyStore } from "@/types/shopping-settings";
 
 export const metadata = { title: "家族設定" };
+
+const HELP_ITEMS = [
+  { label: "招待コード", desc: "このコードを共有すると、家族がそのコードで参加できます。" },
+  {
+    label: "よく使うスーパー",
+    desc: "スーパーごとに食材カテゴリの並び順を設定できます(最大10件)。買い物リスト作成時に選ぶと、その順序で並びます。",
+  },
+  {
+    label: "必ず含める食材",
+    desc: "登録しておくと、買い物リストを作るたびに自動で追加されます(ラップ・ゴミ袋など消耗品向け)。",
+  },
+  { label: "編集できる人", desc: "家族の名前変更・スーパー設定・デフォルト食材の編集は、家族のowner(作成者)のみ行えます。" },
+];
 
 type MembershipRow = {
   role: "owner" | "member";
@@ -95,9 +109,10 @@ export default async function FamilyPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <ZoneIcon zone="family" />
         <h1 className="text-2xl font-bold">{family.name}</h1>
+        <HelpPanel title="家族設定" items={HELP_ITEMS} />
       </div>
       <p className="mt-1 text-sm text-gray-500">家族設定</p>
 
