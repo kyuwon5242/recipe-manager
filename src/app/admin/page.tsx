@@ -34,6 +34,17 @@ export default async function AdminPage() {
             </p>
           </Link>
         </li>
+        <li>
+          <Link
+            href="/menu-agent"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">✨ 献立エージェント(実験)</p>
+            <p className="mt-1 text-sm text-gray-500">
+              会話しながら献立を決め、買い物リストの作成まで進められます。
+            </p>
+          </Link>
+        </li>
       </ul>
     </div>
   );
