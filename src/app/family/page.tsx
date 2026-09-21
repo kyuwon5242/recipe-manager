@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FamilySettingsPanel } from "@/components/FamilySettingsPanel";
+import { FamilyStoreSettings } from "@/components/FamilyStoreSettings";
+import { FamilyDefaultItemsSettings } from "@/components/FamilyDefaultItemsSettings";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import type { FamilyDefaultItem, FamilyStore } from "@/types/shopping-settings";
 
 export const metadata = { title: "家族設定" };
 
@@ -68,6 +71,28 @@ export default async function FamilyPage() {
     .maybeSingle();
   const isAdmin = profile?.is_admin ?? false;
 
+  const { data: stores, error: storesError } = await supabase
+    .from("family_stores")
+    .select("id, name, category_order, position")
+    .eq("family_id", family.id)
+    .order("position", { ascending: true })
+    .returns<FamilyStore[]>();
+
+  if (storesError) {
+    throw new Error(`スーパー設定の取得に失敗しました: ${storesError.message}`);
+  }
+
+  const { data: defaultItems, error: defaultItemsError } = await supabase
+    .from("family_default_items")
+    .select("id, name, quantity, unit, category, position")
+    .eq("family_id", family.id)
+    .order("position", { ascending: true })
+    .returns<FamilyDefaultItem[]>();
+
+  if (defaultItemsError) {
+    throw new Error(`デフォルト食材の取得に失敗しました: ${defaultItemsError.message}`);
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center gap-3">
@@ -76,11 +101,21 @@ export default async function FamilyPage() {
       </div>
       <p className="mt-1 text-sm text-gray-500">家族設定</p>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
         <FamilySettingsPanel
           familyId={family.id}
           familyName={family.name}
           inviteCode={family.invite_code}
+          isOwner={membership.role === "owner"}
+        />
+        <FamilyStoreSettings
+          familyId={family.id}
+          stores={stores ?? []}
+          isOwner={membership.role === "owner"}
+        />
+        <FamilyDefaultItemsSettings
+          familyId={family.id}
+          items={defaultItems ?? []}
           isOwner={membership.role === "owner"}
         />
       </div>

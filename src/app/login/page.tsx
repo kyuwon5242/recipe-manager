@@ -1,13 +1,28 @@
 import Link from "next/link";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { LoginForm } from "@/components/LoginForm";
+import { getAppVersion } from "@/lib/version";
 
 export const metadata = { title: "ログイン" };
 
-export default function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  auth: "ログインに失敗しました。もう一度お試しください。",
+  updated: "アプリが更新されました。お手数ですが、もう一度ログインしてください。",
+};
+
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const params = await searchParams;
+  const reasonParam = params.reason ?? params.error;
+  const reason = Array.isArray(reasonParam) ? reasonParam[0] : reasonParam;
+  const message = reason ? ERROR_MESSAGES[reason] : null;
+
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
       <h1 className="text-2xl font-bold">ログイン</h1>
+
+      {message ? (
+        <p className="mt-4 rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">{message}</p>
+      ) : null}
 
       <div className="mt-6">
         <GoogleSignInButton />
@@ -27,6 +42,8 @@ export default function LoginPage() {
           新規登録
         </Link>
       </p>
+
+      <p className="mt-10 text-center text-xs text-gray-300">version {getAppVersion()}</p>
     </div>
   );
 }

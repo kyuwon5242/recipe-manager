@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-21(フェーズ11時点)
+最終更新: 2026-09-21(フェーズ12時点)
 
 ---
 
@@ -25,7 +25,7 @@
 | 献立から必要な食材を割り出し、手持ちを除いた買い物リストを作る | `/shopping-list` |
 | 確定した買い物リストを家族で共有し、買い物中にチェックしていく | `/shopping-lists`, `/shopping-lists/[id]` |
 | 家族を作る/招待コードで参加する、招待コードの共有 | `/family/setup`, `/family` |
-| (管理者限定・実験機能)会話しながら献立を決め、食材確認〜買い物リスト作成まで進める | `/menu-agent` |
+| (利用許可制・実験機能)会話しながら献立を決め、食材確認〜買い物リスト作成まで進める | `/menu-agent` |
 | (管理者)全家族のレシピ・ユーザーを横断管理し、問題があれば利用停止する | `/admin`, `/admin/recipes`, `/admin/users` |
 | (管理者)食材マスタの表記ゆれ・カテゴリ誤りをAIで整理する | `/ingredients` |
 
@@ -47,8 +47,8 @@
 | `/shopping-lists` | 買い物リスト一覧 | 要ログイン |
 | `/shopping-lists/[id]` | 買い物リスト詳細(チェックリスト、コピー機能) | 要ログイン |
 | `/family` | 家族設定(招待コード、メンバー一覧、名称変更) | 要ログイン |
-| `/menu-agent` | 献立エージェント(会話形式で献立決め〜買い物リスト作成、実験機能) | 要管理者 |
-| `/api/menu-agent` | 献立エージェントのAPI(Route Handler、NDJSONストリーミング) | 要管理者 |
+| `/menu-agent` | 献立エージェント(会話形式で献立決め〜買い物リスト作成、実験機能) | 要利用許可(管理者、または管理者が個別許可したユーザー) |
+| `/api/menu-agent` | 献立エージェントのAPI(Route Handler、NDJSONストリーミング) | 要利用許可(同上) |
 | `/ingredients` | 食材マスタの表記ゆれ・カテゴリ整理 | 要管理者 |
 | `/admin` | 管理者ダッシュボード | 要管理者 |
 | `/admin/recipes` | 全家族のレシピ一覧(横断参照・編集) | 要管理者 |
@@ -60,16 +60,18 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 
 | テーブル | 主なカラム | 説明 |
 |---|---|---|
-| `profiles` | `id`(PK, →auth.users), `email`, `display_name`, `avatar_url`, `is_admin`, `is_suspended`, `created_at` | ユーザープロフィール。サインアップ時に`handle_new_user()`トリガーで自動作成 |
+| `profiles` | `id`(PK, →auth.users), `email`, `display_name`, `avatar_url`, `is_admin`, `is_suspended`, `can_use_menu_agent`, `created_at` | ユーザープロフィール。サインアップ時に`handle_new_user()`トリガーで自動作成 |
 | `families` | `id`(PK), `name`, `invite_code`(unique), `owner_id`(→profiles), `created_at` | 家族。作成・招待参加はRPC(`create_family`/`join_family_with_code`)経由 |
 | `family_members` | `family_id`+`user_id`(複合PK), `role`(owner/member), `joined_at` | 家族の所属関係 |
 | `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `photo_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ |
 | `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照) |
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
-| `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at` | 確定済み買い物リスト |
+| `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
+| `family_stores` | `id`(PK), `family_id`(→families), `name`, `category_order`(text[]), `position`, `created_at` | 家族の「よく使うスーパー」(最大10件、アプリ側で制御)。カテゴリの並び順を保持 |
+| `family_default_items` | `id`(PK), `family_id`(→families), `name`, `quantity`, `unit`, `category`, `position`, `created_at` | 家族の「どの買い物でも必ず含める食材」 |
 
-主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`の自己書き換え防止。SQL Editorからの管理者付与は許可)。
+主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)。
 
 マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0008_fix_admin_bootstrap_trigger.sql`(詳細は5〜14章の各フェーズ記録を参照)。
 
@@ -109,7 +111,11 @@ AIモデルの使い分け方針(フェーズ9で整理):
 - セキュリティ対策(セキュリティヘッダー、ファイルアップロード検証、RLS+アプリ層の多層防御、SSRF対策)
 - UI/UXブランディング(コック帽アイコン、オレンジ/コーラル配色、AI処理中アニメーション、ボタン押下フィードバック)
 - ゾーン別カラーコーディング(機能ごとに色分けしたアイコン・ナビ現在地表示)、生成り色の背景、コンテンツが浮き上がるシャドウ
-- 献立エージェント(管理者限定・実験機能。会話しながら献立を決め、買い物リスト作成まで誘導するツール呼び出しエージェント)
+- 献立エージェント(利用許可制・実験機能。会話しながら献立を決め、買い物リスト作成まで誘導するツール呼び出しエージェント。管理者は個別のユーザーに利用権限を付与できる)
+- デプロイバージョンの表示・強制再ログイン(デプロイ後、旧バージョンのクライアントで操作を続けさせない)
+- 買い物リストの上書き保存(件数上限に達した場合)、作成・更新日時の表示
+- 家族ごとの「どの買い物でも必ず含める食材」設定
+- 家族ごとの「よく使うスーパー」設定(食材カテゴリの並び順を保存し、買い物リスト作成時に選択できる)
 
 ---
 
@@ -704,4 +710,44 @@ Tailwind v4の`@theme`にカスタムシャドウトークン`--shadow-raised`(�
 
 - 会話履歴のサーバー/DB永続化(複数端末での共有、複数スレッド管理)は見送り、v1では単一端末のlocalStorageのみ
 - 買い物リスト確定後に「新しい会話を始めますか」と促す任意のプロンプトは実装せず、既存の「新しい会話を始める」ボタンでの明示リセットのみとした
-- パントリー(在庫)管理ツールや、管理者以外への公開は対象外
+- パントリー(在庫)管理ツールは対象外(フェーズ11時点)。「管理者以外への公開」自体はフェーズ12で個別許可制として実現した(17.7の元記述を更新)
+
+## 18. バージョン管理・買い物リスト上書き・家族の買い物設定・献立エージェント権限付与(フェーズ12)
+
+ユーザーから5件の改修依頼がまとまって来たフェーズ。DBスキーマ変更(`supabase/migrations/0009_menu_agent_access_and_shopping_settings.sql`)を伴う。
+
+### 18.1 デプロイバージョンの表示・強制再ログイン
+
+- `src/lib/version.ts`の`getAppVersion()`が、Vercelが自動注入する`VERCEL_GIT_COMMIT_SHA`(システム環境変数)の先頭7桁を返す。ローカル開発時は未設定のため常に`"dev"`になる
+- ログイン画面(`/login`)の下部に`version {getAppVersion()}`を表示
+- `src/lib/supabase/middleware.ts`(`updateSession`、既存の`is_suspended`チェックと同じ場所)で、リクエストごとに現在のバージョンと`app_version`Cookieを比較する。ログイン中にバージョンが変わっていた場合はサインアウトし、`/login?reason=updated`にリダイレクトする(ログイン画面に理由メッセージを表示)。Cookieは訪問のたびに現在バージョンへ更新される
+- ミドルウェアは全ページ遷移・Server Action呼び出しで実行されるため、クライアント側の常駐ポーリングは不要とした(既存の認証チェックの仕組みをそのまま再利用)
+
+### 18.2 買い物リストの上書き保存・作成日時の表示
+
+- `createShoppingList`(`src/app/shopping-list/actions.ts`)が`options: { storeId?, overwriteListId? }`を受け取れるように変更。`overwriteListId`を指定すると新規作成の代わりに既存リストの品目を全削除→再挿入し、タイトルと`updated_at`を更新する
+- 件数上限(1人3件)に達した場合、従来は例外を投げて終了していたが、共有定数`SHOPPING_LIST_LIMIT_MESSAGE`(`src/lib/shopping/messages.ts`)でエラーを判別し、クライアント側(`IngredientListBuilder`・`MenuAgentChat`)が自分の既存リスト一覧(`getMyShoppingListsForOverwrite`)を取得して上書き先を選ばせるUIに切り替える
+- `shopping_lists`に`updated_at`(上書き保存時に更新)を追加。一覧画面・詳細画面の両方に作成日時(および更新日時が異なる場合はそれも)を表示するようにした(`formatDateTime`、`src/lib/format-date.ts`)
+
+### 18.3 家族の「どの買い物でも必ず含める食材」
+
+- `family_default_items`テーブル(家族単位、owner のみ編集可、全メンバー閲覧可)を追加し、`/family`に管理UI(`FamilyDefaultItemsSettings`)を設置
+- 食材リスト作成画面(`IngredientListBuilder`)・献立エージェント(`compute_shopping_list`/`create_shopping_list`)のどちらでも、必要な食材を集計する直前にこのデフォルト食材を「人数スケーリングなしの疑似レシピ」として`aggregateNeededIngredients`に追加で渡すことで、既存の集計ロジックをそのまま再利用して合算している(`servings: null`のため人数倍率が適用されない)
+
+### 18.4 家族の「よく使うスーパー」(カテゴリの並び順)
+
+- `family_stores`テーブル(家族単位、最大10件はアプリ側で制御、owner のみ編集可)を追加。各スーパーは10分類ぶんの並び順(`category_order`)を保持し、新規追加時は標準順(E章)で初期化される
+- `/family`の管理UI(`FamilyStoreSettings`)では、スマホでの操作性を考慮し(フェーズ9で得た「ドラッグ&ドロップは操作性が悪い」という知見を踏襲)、カテゴリの並び替えはドラッグではなく▲▼ボタンにした
+- `sortByCategoryOrder`(`src/lib/ingredients/categories.ts`)が任意の並び順配列を第2引数に取れるよう拡張(省略時は従来通り標準10分類順)
+- 食材リスト作成画面・献立エージェントのどちらでも、買い物リスト確定時にスーパーを選択できる(未選択時は標準順のまま、挙動は変更なし)。実際の並び替えは`createShoppingList`内で選択されたスーパーの`category_order`を使って行い、`shopping_lists.store_id`に記録する。買い物リスト詳細画面(`ShoppingListChecklist`)は、保存時の`store_id`から並び順を引いて表示する(保存後にスーパー設定を変更しても、そのリストの表示順は保存時の設定を都度参照するため追随する)
+
+### 18.5 献立エージェントの個別権限付与
+
+- `profiles.can_use_menu_agent`を追加。献立エージェントのアクセス制御を`requireAdmin()`から新設の`requireMenuAgentAccess()`(`is_admin`または`can_use_menu_agent`のいずれかでアクセス可)に変更した
+- `/admin/users`の各行に、管理者以外のユーザー向けの利用可否トグル(`toggleMenuAgentAccess`)を追加。管理者自身は常に利用可能なため、管理者の行にはトグルを出さず注記のみ表示する
+- `is_admin`/`is_suspended`の自己書き換えを防ぐ既存トリガー(`protect_profile_admin_fields`)に`can_use_menu_agent`も追加し、非管理者が自分自身に権限を付与できないようにした(UIだけでなくDBレイヤーでも防止する、フェーズ7以来の設計方針を踏襲)
+- 献立エージェントは全体ナビ(`HeaderNav`)・ホーム画面には表示していなかった(フェーズ11時点の判断)が、管理者以外にも利用者が広がり得るようになったため、`is_admin || can_use_menu_agent`のユーザーには両方に導線を表示するよう変更した
+
+### 18.6 実装確認で見つけた不具合
+
+- `"use server"`ディレクティブを持つファイル(Server Actions)は関数以外のエクスポートを許可しない仕様のため、`family/actions.ts`に定数`MAX_FAMILY_STORES`を、`shopping-list/actions.ts`に定数`SHOPPING_LIST_LIMIT_MESSAGE`を直接エクスポートしてビルドエラー(「モジュールにエクスポートが存在しない」)になった。両定数を通常のモジュール(`src/types/shopping-settings.ts`、`src/lib/shopping/messages.ts`)に切り出して解決した

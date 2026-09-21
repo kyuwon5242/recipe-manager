@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getAppVersion } from "@/lib/version";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/suspended"];
+const APP_VERSION_COOKIE = "app_version";
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,6 +34,27 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   const pathname = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/auth/callback");
+
+  // 新しいバージョンがデプロイされた後も古いクライアントで操作を続けられて
+  // しまわないよう、ログイン中にバージョンが変わっていたら一度サインアウト
+  // させ、ログイン画面からやり直してもらう(is_suspendedのチェックと同じ設計)。
+  const currentVersion = getAppVersion();
+  const cookieVersion = request.cookies.get(APP_VERSION_COOKIE)?.value;
+  const versionChanged = Boolean(cookieVersion) && cookieVersion !== currentVersion;
+
+  if (user && versionChanged && pathname !== "/login") {
+    await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("reason", "updated");
+    const response = NextResponse.redirect(url);
+    response.cookies.set(APP_VERSION_COOKIE, currentVersion, { path: "/" });
+    return response;
+  }
+
+  if (!cookieVersion || versionChanged) {
+    supabaseResponse.cookies.set(APP_VERSION_COOKIE, currentVersion, { path: "/" });
+  }
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { formatDateTime } from "@/lib/format-date";
 
 export const metadata = { title: "買い物リスト" };
 
@@ -8,6 +9,7 @@ type ShoppingListRow = {
   id: string;
   title: string;
   created_at: string;
+  updated_at: string;
   profiles: { display_name: string | null; email: string | null } | null;
   shopping_list_items: { id: string; is_checked: boolean }[];
 };
@@ -17,7 +19,7 @@ export default async function ShoppingListsPage() {
   const { data: lists, error } = await supabase
     .from("shopping_lists")
     .select(
-      "id, title, created_at, profiles(display_name, email), shopping_list_items(id, is_checked)"
+      "id, title, created_at, updated_at, profiles(display_name, email), shopping_list_items(id, is_checked)"
     )
     .order("created_at", { ascending: false })
     .returns<ShoppingListRow[]>();
@@ -58,6 +60,12 @@ export default async function ShoppingListsPage() {
                   <p className="mt-1 text-sm text-gray-500">
                     {list.profiles?.display_name ?? list.profiles?.email ?? "unknown"} が作成
                     ・ {checked}/{total} 購入済み
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    作成: {formatDateTime(list.created_at)}
+                    {list.updated_at !== list.created_at
+                      ? ` ・ 更新: ${formatDateTime(list.updated_at)}`
+                      : ""}
                   </p>
                 </Link>
               </li>

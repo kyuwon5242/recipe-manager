@@ -11,6 +11,7 @@ type ProfileRow = {
   display_name: string | null;
   is_admin: boolean;
   is_suspended: boolean;
+  can_use_menu_agent: boolean;
 };
 
 type MembershipRow = {
@@ -23,7 +24,7 @@ export default async function AdminUsersPage() {
 
   const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
-    .select("id, email, display_name, is_admin, is_suspended")
+    .select("id, email, display_name, is_admin, is_suspended, can_use_menu_agent")
     .order("email", { ascending: true })
     .returns<ProfileRow[]>();
 
@@ -51,6 +52,7 @@ export default async function AdminUsersPage() {
     familyName: familyByUserId.get(p.id) ?? null,
     isAdmin: p.is_admin,
     isSuspended: p.is_suspended,
+    canUseMenuAgent: p.can_use_menu_agent,
     isSelf: p.id === userId,
   }));
 

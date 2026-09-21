@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { registerRecipeIdea } from "@/app/recipes/actions";
-import { createShoppingList } from "@/app/shopping-list/actions";
+import {
+  createShoppingList,
+  getMyShoppingListsForOverwrite,
+  type ShoppingListSummary,
+} from "@/app/shopping-list/actions";
+import { SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
 import {
   PLAN_SLOTS,
   type MenuAgentChatMessage,
@@ -10,6 +15,8 @@ import {
   type PlanItem,
   type ShoppingDraftItem,
 } from "@/lib/anthropic/menu-agent-tools";
+import { formatDateTime } from "@/lib/format-date";
+import type { FamilyStore } from "@/types/shopping-settings";
 
 const STORAGE_KEY = "recipe-app.menu-agent.v1";
 const MAX_STORED_TURNS = 40; // ユーザー・エージェント合わせて約20往復ぶん
@@ -85,7 +92,7 @@ function sortPlanBySlot(items: PlanItem[]): PlanItem[] {
   return [...items].sort((a, b) => PLAN_SLOTS.indexOf(a.slot) - PLAN_SLOTS.indexOf(b.slot));
 }
 
-export function MenuAgentChat() {
+export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const [latestShoppingDraft, setLatestShoppingDraft] = useState<ShoppingDraftItem[] | null>(null);
@@ -94,6 +101,10 @@ export function MenuAgentChat() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConfirming, startConfirm] = useTransition();
+  const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [overwriteCandidates, setOverwriteCandidates] = useState<ShoppingListSummary[] | null>(null);
+  const [isLoadingOverwrite, startLoadOverwrite] = useTransition();
+  const [selectedOverwriteId, setSelectedOverwriteId] = useState("");
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -243,6 +254,7 @@ export function MenuAgentChat() {
   function handleConfirmShoppingList() {
     if (!latestShoppingDraft || latestShoppingDraft.length === 0) return;
     setError(null);
+    setOverwriteCandidates(null);
     startConfirm(async () => {
       try {
         let currentPlan = plan;
@@ -256,7 +268,40 @@ export function MenuAgentChat() {
             quantity: item.quantity,
             unit: item.unit,
             category: item.category,
-          }))
+          })),
+          { storeId: selectedStoreId || null }
+        );
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
+        if (err instanceof Error && err.message === SHOPPING_LIST_LIMIT_MESSAGE) {
+          startLoadOverwrite(async () => {
+            try {
+              const lists = await getMyShoppingListsForOverwrite();
+              setOverwriteCandidates(lists);
+            } catch (loadErr) {
+              setError(loadErr instanceof Error ? loadErr.message : "取得に失敗しました");
+            }
+          });
+          return;
+        }
+        setError(err instanceof Error ? err.message : "買い物リストの確定に失敗しました");
+      }
+    });
+  }
+
+  function handleOverwriteConfirm() {
+    if (!latestShoppingDraft || !selectedOverwriteId) return;
+    setError(null);
+    startConfirm(async () => {
+      try {
+        await createShoppingList(
+          latestShoppingDraft.map((item) => ({
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category,
+          })),
+          { storeId: selectedStoreId || null, overwriteListId: selectedOverwriteId }
         );
       } catch (err) {
         if (isRedirectError(err)) throw err;
@@ -314,8 +359,57 @@ export function MenuAgentChat() {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
+      {overwriteCandidates || isLoadingOverwrite ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
+          <p className="font-medium text-amber-800">
+            買い物リストは1人3件までです。上書きするリストを選んでください。
+          </p>
+          {isLoadingOverwrite || !overwriteCandidates ? (
+            <p className="mt-2 text-gray-500">読み込み中...</p>
+          ) : (
+            <ul className="mt-2 space-y-1">
+              {overwriteCandidates.map((list) => (
+                <li key={list.id}>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="menu-agent-overwrite-target"
+                      checked={selectedOverwriteId === list.id}
+                      onChange={() => setSelectedOverwriteId(list.id)}
+                    />
+                    <span>
+                      {list.title}({list.itemCount}品目・{formatDateTime(list.created_at)}作成)
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={handleOverwriteConfirm}
+              disabled={!selectedOverwriteId || isConfirming}
+              className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
+            >
+              {isConfirming ? "保存中..." : "選んだリストを上書きする"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOverwriteCandidates(null);
+                setSelectedOverwriteId("");
+              }}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {hasPendingIdeas || (latestShoppingDraft && latestShoppingDraft.length > 0) ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {hasPendingIdeas ? (
             <button
               type="button"
@@ -327,14 +421,31 @@ export function MenuAgentChat() {
             </button>
           ) : null}
           {latestShoppingDraft && latestShoppingDraft.length > 0 ? (
-            <button
-              type="button"
-              onClick={handleConfirmShoppingList}
-              disabled={isConfirming}
-              className="rounded-full bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-raised transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-            >
-              {isConfirming ? "確定中..." : "この内容で買い物リストを確定する"}
-            </button>
+            <>
+              {stores.length > 0 ? (
+                <select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  title="選ぶとそのスーパーの並び順で買い物リストを作成します"
+                  className="rounded-md border border-gray-300 px-2 py-1.5 text-xs"
+                >
+                  <option value="">スーパー指定なし</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleConfirmShoppingList}
+                disabled={isConfirming}
+                className="rounded-full bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-raised transition active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              >
+                {isConfirming ? "確定中..." : "この内容で買い物リストを確定する"}
+              </button>
+            </>
           ) : null}
         </div>
       ) : null}

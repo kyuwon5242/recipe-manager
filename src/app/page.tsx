@@ -42,10 +42,11 @@ export default async function HomePage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_admin, display_name")
+    .select("is_admin, display_name, can_use_menu_agent")
     .eq("id", user.id)
     .maybeSingle();
   const isAdmin = profile?.is_admin ?? false;
+  const canUseMenuAgent = isAdmin || (profile?.can_use_menu_agent ?? false);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -84,6 +85,16 @@ export default async function HomePage() {
             <p className="mt-1 text-xs text-gray-500">{card.desc}</p>
           </Link>
         ))}
+        {canUseMenuAgent ? (
+          <Link
+            href="/menu-agent"
+            className="block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
+          >
+            <ZoneIcon zone="ai" icon="✨" className="mb-3" />
+            <p className="font-bold">献立エージェント</p>
+            <p className="mt-1 text-xs text-gray-500">会話しながら献立〜買い物リスト作成まで進める(実験機能)</p>
+          </Link>
+        ) : null}
         {isAdmin ? (
           <Link
             href="/admin"

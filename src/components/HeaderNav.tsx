@@ -45,10 +45,12 @@ function pillClass(active: boolean, zone: Zone): string {
 export function HeaderNav({
   familyName,
   isAdmin,
+  canUseMenuAgent,
   userEmail,
 }: {
   familyName: string | null;
   isAdmin: boolean;
+  canUseMenuAgent: boolean;
   userEmail: string;
 }) {
   const pathname = usePathname();
@@ -74,6 +76,16 @@ export function HeaderNav({
         <span aria-hidden="true">{ZONES.family.icon}</span>
         {familyName ?? "家族設定"}
       </Link>
+      {isAdmin || canUseMenuAgent ? (
+        <Link
+          href="/menu-agent"
+          title="会話しながら献立を決め、買い物リスト作成まで進める(実験機能)"
+          className={pillClass(pathname === "/menu-agent", "ai")}
+        >
+          <span aria-hidden="true">✨</span>
+          献立エージェント
+        </Link>
+      ) : null}
       {isAdmin ? (
         <Link
           href="/admin"

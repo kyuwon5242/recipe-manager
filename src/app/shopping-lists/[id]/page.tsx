@@ -3,7 +3,17 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ShoppingListChecklist } from "@/components/ShoppingListChecklist";
 import { DeleteShoppingListButton } from "@/components/DeleteShoppingListButton";
+import { formatDateTime } from "@/lib/format-date";
 import type { ShoppingListItem } from "@/types/shopping-list";
+
+type ListRow = {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  store_id: string | null;
+  family_stores: { category_order: string[] } | null;
+};
 
 export default async function ShoppingListDetailPage({
   params,
@@ -13,9 +23,9 @@ export default async function ShoppingListDetailPage({
 
   const { data: list, error } = await supabase
     .from("shopping_lists")
-    .select("id, title")
+    .select("id, title, created_at, updated_at, store_id, family_stores(category_order)")
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle<ListRow>();
 
   if (error) {
     throw new Error(`買い物リストの取得に失敗しました: ${error.message}`);
@@ -45,9 +55,17 @@ export default async function ShoppingListDetailPage({
         <h1 className="text-2xl font-bold">{list.title}</h1>
         <DeleteShoppingListButton listId={list.id} />
       </div>
+      <p className="mt-1 text-xs text-gray-400">
+        作成: {formatDateTime(list.created_at)}
+        {list.updated_at !== list.created_at ? ` ・ 更新: ${formatDateTime(list.updated_at)}` : ""}
+      </p>
       <p className="mt-1 text-xs text-gray-400">タップすると購入済みにできます</p>
 
-      <ShoppingListChecklist listId={list.id} items={items ?? []} />
+      <ShoppingListChecklist
+        listId={list.id}
+        items={items ?? []}
+        categoryOrder={list.family_stores?.category_order}
+      />
     </div>
   );
 }

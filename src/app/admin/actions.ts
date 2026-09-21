@@ -41,3 +41,18 @@ export async function toggleUserSuspension(userId: string, nextValue: boolean) {
 
   revalidatePath("/admin/users");
 }
+
+export async function toggleMenuAgentAccess(userId: string, nextValue: boolean) {
+  const { supabase } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ can_use_menu_agent: nextValue })
+    .eq("id", userId);
+
+  if (error) {
+    throw new Error(`献立エージェント権限の更新に失敗しました: ${error.message}`);
+  }
+
+  revalidatePath("/admin/users");
+}

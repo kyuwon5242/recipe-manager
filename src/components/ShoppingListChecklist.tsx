@@ -8,18 +8,21 @@ import type { ShoppingListItem } from "@/types/shopping-list";
 export function ShoppingListChecklist({
   listId,
   items,
+  categoryOrder,
 }: {
   listId: string;
   items: ShoppingListItem[];
+  categoryOrder?: string[];
 }) {
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
 
-  // カテゴリはスーパーの売り場順で固定表示する(店内を一筆書きで回れるように)。
+  // カテゴリはスーパーの売り場順(このリストで指定されたスーパーの設定が
+  // あればその順、無ければ標準の並び順)で固定表示する。
   // カテゴリ内の並びは元のposition順を維持する。
   const categories: string[] = [];
   const grouped = new Map<string, ShoppingListItem[]>();
-  for (const item of sortByCategoryOrder(items)) {
+  for (const item of sortByCategoryOrder(items, categoryOrder)) {
     if (!grouped.has(item.category)) {
       grouped.set(item.category, []);
       categories.push(item.category);

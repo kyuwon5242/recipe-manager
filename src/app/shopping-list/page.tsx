@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentFamilyId } from "@/lib/family/current";
+import { getFamilyStores } from "@/lib/shopping/defaults";
 import { IngredientListBuilder } from "@/components/IngredientListBuilder";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import type { BuilderRecipe, InitialSelection } from "@/types/shopping-list";
+import type { FamilyDefaultItem } from "@/types/shopping-settings";
 
 export const metadata = { title: "食材リストを作成" };
 
@@ -52,6 +55,7 @@ export default async function ShoppingListPage({
   const initialSelections = parseInitialSelections(params);
 
   const supabase = await createClient();
+  const familyId = await getCurrentFamilyId();
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select(
@@ -62,6 +66,19 @@ export default async function ShoppingListPage({
 
   if (error) {
     throw new Error(`レシピの取得に失敗しました: ${error.message}`);
+  }
+
+  const stores = await getFamilyStores(supabase, familyId);
+
+  const { data: defaultItems, error: defaultItemsError } = await supabase
+    .from("family_default_items")
+    .select("id, name, quantity, unit, category, position")
+    .eq("family_id", familyId)
+    .order("position", { ascending: true })
+    .returns<FamilyDefaultItem[]>();
+
+  if (defaultItemsError) {
+    throw new Error(`デフォルト食材の取得に失敗しました: ${defaultItemsError.message}`);
   }
 
   const builderRecipes: BuilderRecipe[] = (recipes ?? []).map((recipe) => ({
@@ -90,7 +107,12 @@ export default async function ShoppingListPage({
       <p className="mt-2 text-sm text-gray-500">
         作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
       </p>
-      <IngredientListBuilder recipes={builderRecipes} initialSelections={initialSelections} />
+      <IngredientListBuilder
+        recipes={builderRecipes}
+        initialSelections={initialSelections}
+        stores={stores}
+        defaultItems={defaultItems ?? []}
+      />
     </div>
   );
 }

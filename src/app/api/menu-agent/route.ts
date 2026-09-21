@@ -2,12 +2,17 @@ import { randomUUID } from "crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createAnthropicClient } from "@/lib/anthropic/client";
-import { requireAdmin } from "@/lib/admin/current";
+import { requireMenuAgentAccess } from "@/lib/admin/current";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { createClient } from "@/lib/supabase/server";
 import { bucketGenre } from "@/lib/recipe-genre";
-import { aggregateNeededIngredients, flattenToShoppingItems } from "@/lib/ingredients/aggregate";
+import {
+  aggregateNeededIngredients,
+  flattenToShoppingItems,
+  type AggregateRecipeInput,
+} from "@/lib/ingredients/aggregate";
 import { sortByCategoryOrder } from "@/lib/ingredients/categories";
+import { getFamilyDefaultItemsAsIngredients } from "@/lib/shopping/defaults";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 import {
   MENU_AGENT_TOOLS,
@@ -39,9 +44,9 @@ function todayInJapanese(): string {
 }
 
 export async function POST(req: Request) {
-  let admin: Awaited<ReturnType<typeof requireAdmin>>;
+  let admin: Awaited<ReturnType<typeof requireMenuAgentAccess>>;
   try {
-    admin = await requireAdmin();
+    admin = await requireMenuAgentAccess();
   } catch (err) {
     const message = err instanceof Error ? err.message : "権限確認に失敗しました";
     return new Response(JSON.stringify({ error: message }), {
@@ -541,7 +546,7 @@ async function computeShoppingItems(
     for (const row of data ?? []) categoryByName.set(row.name, row.category);
   }
 
-  const recipeInputs = workingPlan.map((item) => {
+  const recipeInputs: AggregateRecipeInput[] = workingPlan.map((item) => {
     if (item.source === "existing" && item.recipeId) {
       const recipe = recipeById.get(item.recipeId);
       return {
@@ -562,6 +567,12 @@ async function computeShoppingItems(
       })),
     };
   });
+
+  // 家族の「どの買い物でも必ず含める食材」も献立と同様に集計に加える
+  const defaultItems = await getFamilyDefaultItemsAsIngredients(supabase, familyId);
+  if (defaultItems.length > 0) {
+    recipeInputs.push({ servings: null, ingredients: defaultItems });
+  }
 
   const needed = aggregateNeededIngredients(recipeInputs);
   return sortByCategoryOrder(flattenToShoppingItems(needed));

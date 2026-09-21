@@ -37,6 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   let familyName: string | null = null;
   let isAdmin = false;
+  let canUseMenuAgent = false;
   if (user) {
     const { data } = await supabase
       .from("family_members")
@@ -48,10 +49,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_admin")
+      .select("is_admin, can_use_menu_agent")
       .eq("id", user.id)
       .maybeSingle();
     isAdmin = profile?.is_admin ?? false;
+    canUseMenuAgent = profile?.can_use_menu_agent ?? false;
   }
 
   return (
@@ -73,7 +75,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               レシピマネージャー
             </Link>
             {user ? (
-              <HeaderNav familyName={familyName} isAdmin={isAdmin} userEmail={user.email ?? ""} />
+              <HeaderNav
+                familyName={familyName}
+                isAdmin={isAdmin}
+                canUseMenuAgent={canUseMenuAgent}
+                userEmail={user.email ?? ""}
+              />
             ) : null}
           </div>
         </header>

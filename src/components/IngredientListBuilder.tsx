@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { createShoppingList } from "@/app/shopping-list/actions";
+import {
+  createShoppingList,
+  getMyShoppingListsForOverwrite,
+  type CreateShoppingListItemInput,
+  type ShoppingListSummary,
+} from "@/app/shopping-list/actions";
+import { SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import {
@@ -12,9 +18,13 @@ import {
 import {
   aggregateNeededIngredients,
   flattenToShoppingItems,
+  type AggregateIngredientInput,
+  type AggregateRecipeInput,
   type NeededIngredient,
 } from "@/lib/ingredients/aggregate";
 import type { BuilderRecipe, DraftItem, InitialSelection } from "@/types/shopping-list";
+import type { FamilyDefaultItem, FamilyStore } from "@/types/shopping-settings";
+import { formatDateTime } from "@/lib/format-date";
 
 const DEFAULT_CATEGORY = UNCATEGORIZED_LABEL;
 const CATEGORY_SUGGESTIONS = [...INGREDIENT_CATEGORIES, DEFAULT_CATEGORY];
@@ -67,6 +77,100 @@ function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
+function StoreSelector({
+  stores,
+  selectedStoreId,
+  onChange,
+}: {
+  stores: FamilyStore[];
+  selectedStoreId: string;
+  onChange: (id: string) => void;
+}) {
+  if (stores.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <label className="text-gray-600">買い物するスーパー:</label>
+      <select
+        value={selectedStoreId}
+        onChange={(e) => onChange(e.target.value)}
+        title="選ぶとそのスーパーの並び順で買い物リストを作成します"
+        className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+      >
+        <option value="">指定なし(標準の並び順)</option>
+        {stores.map((store) => (
+          <option key={store.id} value={store.id}>
+            {store.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function OverwritePicker({
+  candidates,
+  selectedId,
+  onSelect,
+  onConfirm,
+  onCancel,
+  isLoading,
+  isSubmitting,
+}: {
+  candidates: ShoppingListSummary[] | null;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isLoading: boolean;
+  isSubmitting: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm">
+      <p className="font-medium text-amber-800">
+        買い物リストは1人3件までです。上書きするリストを選んでください。
+      </p>
+      {isLoading || !candidates ? (
+        <p className="mt-2 text-gray-500">読み込み中...</p>
+      ) : (
+        <ul className="mt-2 space-y-1">
+          {candidates.map((list) => (
+            <li key={list.id}>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="overwrite-target"
+                  checked={selectedId === list.id}
+                  onChange={() => onSelect(list.id)}
+                />
+                <span>
+                  {list.title}({list.itemCount}品目・{formatDateTime(list.created_at)}作成)
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={!selectedId || isSubmitting}
+          className="rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
+        >
+          {isSubmitting ? "保存中..." : "選んだリストを上書きする"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+        >
+          キャンセル
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function isRedirectError(err: unknown): boolean {
   return (
     typeof err === "object" &&
@@ -80,9 +184,13 @@ function isRedirectError(err: unknown): boolean {
 export function IngredientListBuilder({
   recipes,
   initialSelections = [],
+  stores = [],
+  defaultItems = [],
 }: {
   recipes: BuilderRecipe[];
   initialSelections?: InitialSelection[];
+  stores?: FamilyStore[];
+  defaultItems?: FamilyDefaultItem[];
 }) {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(
     () => new Set(initialSelections.map((s) => s.id))
@@ -104,6 +212,14 @@ export function IngredientListBuilder({
   const [draggingCategory, setDraggingCategory] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isConfirming, startConfirm] = useTransition();
+  const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+  const [overwriteCandidates, setOverwriteCandidates] = useState<ShoppingListSummary[] | null>(null);
+  const [pendingItems, setPendingItems] = useState<CreateShoppingListItemInput[] | null>(null);
+  const [selectedOverwriteId, setSelectedOverwriteId] = useState<string>("");
+  const [isLoadingOverwrite, startLoadOverwrite] = useTransition();
+
+  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
+  const activeCategoryOrder = selectedStore?.category_order ?? INGREDIENT_CATEGORIES;
   // 献立トレイなどから選択済みの状態で遷移してきた場合は、冗長にならないよう
   // レシピ選択欄を畳んでおく。何も選択されていない通常アクセス時は開いたまま。
   const [showRecipePicker, setShowRecipePicker] = useState(initialSelections.length === 0);
@@ -120,14 +236,22 @@ export function IngredientListBuilder({
 
   const neededIngredients = useMemo<NeededIngredient[]>(() => {
     const selected = recipes.filter((recipe) => selectedRecipeIds.has(recipe.id));
-    return aggregateNeededIngredients(
-      selected.map((recipe) => ({
-        servings: recipe.servings,
-        targetServings: servingsTargets[recipe.id],
-        ingredients: recipe.ingredients,
-      }))
-    );
-  }, [selectedRecipeIds, recipes, servingsTargets]);
+    const recipeInputs: AggregateRecipeInput[] = selected.map((recipe) => ({
+      servings: recipe.servings,
+      targetServings: servingsTargets[recipe.id],
+      ingredients: recipe.ingredients,
+    }));
+    if (defaultItems.length > 0) {
+      const asIngredients: AggregateIngredientInput[] = defaultItems.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+      }));
+      recipeInputs.push({ servings: null, ingredients: asIngredients });
+    }
+    return aggregateNeededIngredients(recipeInputs);
+  }, [selectedRecipeIds, recipes, servingsTargets, defaultItems]);
 
   const neededByCategory = useMemo(() => {
     const order: string[] = [];
@@ -222,32 +346,67 @@ export function IngredientListBuilder({
     setDraftItems(items);
     setCategoryOrder(
       sortByCategoryOrder(
-        Array.from(new Set(items.map((i) => i.category))).map((category) => ({ category }))
+        Array.from(new Set(items.map((i) => i.category))).map((category) => ({ category })),
+        activeCategoryOrder
       ).map((c) => c.category)
     );
     setConfirmError(null);
     setStep("draft");
   }
 
+  // 買い物リストの件数上限に達した場合、上書き先を選べるようにする。
+  // モデル任せではなく、ユーザーの明示的な選択があって初めて上書きが実行される。
+  function submitShoppingList(items: CreateShoppingListItemInput[]) {
+    startConfirm(async () => {
+      try {
+        await createShoppingList(items, { storeId: selectedStoreId || null });
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
+        if (err instanceof Error && err.message === SHOPPING_LIST_LIMIT_MESSAGE) {
+          setPendingItems(items);
+          startLoadOverwrite(async () => {
+            try {
+              const lists = await getMyShoppingListsForOverwrite();
+              setOverwriteCandidates(lists);
+            } catch (loadErr) {
+              setConfirmError(loadErr instanceof Error ? loadErr.message : "取得に失敗しました");
+            }
+          });
+          return;
+        }
+        setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
+      }
+    });
+  }
+
+  function handleOverwriteConfirm() {
+    if (!pendingItems || !selectedOverwriteId) return;
+    startConfirm(async () => {
+      try {
+        await createShoppingList(pendingItems, {
+          storeId: selectedStoreId || null,
+          overwriteListId: selectedOverwriteId,
+        });
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
+        setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
+      }
+    });
+  }
+
   // 手持ちの確認を省略し、必要な食材をそのまま(スーパーの売り場順で)買い物
   // リストとして確定する近道。「今日はこれで買い物リストを作る」用。
   function handleQuickCreate() {
     setConfirmError(null);
-    const items = sortByCategoryOrder(flattenToShoppingItems(neededIngredients));
+    setOverwriteCandidates(null);
+    const items = sortByCategoryOrder(flattenToShoppingItems(neededIngredients), activeCategoryOrder);
 
     if (items.length === 0) {
       setConfirmError("必要な食材がありません。レシピを選択してください");
       return;
     }
 
-    startConfirm(async () => {
-      try {
-        await createShoppingList(items);
-      } catch (err) {
-        if (isRedirectError(err)) throw err;
-        setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
-      }
-    });
+    submitShoppingList(items);
   }
 
   function updateDraftItem(key: string, patch: Partial<DraftItem>) {
@@ -294,6 +453,7 @@ export function IngredientListBuilder({
 
   function handleConfirm() {
     setConfirmError(null);
+    setOverwriteCandidates(null);
     const orderedItems = categoryOrder
       .flatMap((category) => draftItems.filter((item) => item.category === category))
       .map((item) => ({
@@ -309,14 +469,7 @@ export function IngredientListBuilder({
       return;
     }
 
-    startConfirm(async () => {
-      try {
-        await createShoppingList(orderedItems);
-      } catch (err) {
-        if (isRedirectError(err)) throw err;
-        setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
-      }
-    });
+    submitShoppingList(orderedItems);
   }
 
   if (step === "draft") {
@@ -425,17 +578,35 @@ export function IngredientListBuilder({
           + 食材を追加
         </button>
 
+        <StoreSelector stores={stores} selectedStoreId={selectedStoreId} onChange={setSelectedStoreId} />
+
         {confirmError ? <p className="text-sm text-red-600">{confirmError}</p> : null}
 
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={isConfirming}
-          title="この内容で買い物リストを保存し、家族に共有します"
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
-        >
-          {isConfirming ? "登録中..." : "買い物リストとして確定する"}
-        </button>
+        {overwriteCandidates || isLoadingOverwrite ? (
+          <OverwritePicker
+            candidates={overwriteCandidates}
+            selectedId={selectedOverwriteId}
+            onSelect={setSelectedOverwriteId}
+            onConfirm={handleOverwriteConfirm}
+            onCancel={() => {
+              setOverwriteCandidates(null);
+              setPendingItems(null);
+              setSelectedOverwriteId("");
+            }}
+            isLoading={isLoadingOverwrite}
+            isSubmitting={isConfirming}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isConfirming}
+            title="この内容で買い物リストを保存し、家族に共有します"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+          >
+            {isConfirming ? "登録中..." : "買い物リストとして確定する"}
+          </button>
+        )}
       </div>
     );
   }
@@ -624,28 +795,46 @@ export function IngredientListBuilder({
         </div>
       ) : null}
 
+      <StoreSelector stores={stores} selectedStoreId={selectedStoreId} onChange={setSelectedStoreId} />
+
       {confirmError ? <p className="text-sm text-red-600">{confirmError}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={handleGenerateDraft}
-          disabled={selectedRecipeIds.size === 0}
-          title="手持ちの食材を確認しながら、買い物リストの下書きを作ります"
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
-        >
-          食材リストを作成
-        </button>
-        <button
-          type="button"
-          onClick={handleQuickCreate}
-          disabled={selectedRecipeIds.size === 0 || isConfirming}
-          className="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-          title="手持ちの確認をせず、必要な食材をそのまま買い物リストにします"
-        >
-          {isConfirming ? "作成中..." : "今日はこれで買い物リストを作る"}
-        </button>
-      </div>
+      {overwriteCandidates || isLoadingOverwrite ? (
+        <OverwritePicker
+          candidates={overwriteCandidates}
+          selectedId={selectedOverwriteId}
+          onSelect={setSelectedOverwriteId}
+          onConfirm={handleOverwriteConfirm}
+          onCancel={() => {
+            setOverwriteCandidates(null);
+            setPendingItems(null);
+            setSelectedOverwriteId("");
+          }}
+          isLoading={isLoadingOverwrite}
+          isSubmitting={isConfirming}
+        />
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleGenerateDraft}
+            disabled={selectedRecipeIds.size === 0}
+            title="手持ちの食材を確認しながら、買い物リストの下書きを作ります"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
+          >
+            食材リストを作成
+          </button>
+          <button
+            type="button"
+            onClick={handleQuickCreate}
+            disabled={selectedRecipeIds.size === 0 || isConfirming}
+            className="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+            title="手持ちの確認をせず、必要な食材をそのまま買い物リストにします"
+          >
+            {isConfirming ? "作成中..." : "今日はこれで買い物リストを作る"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
