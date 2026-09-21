@@ -34,7 +34,7 @@ export function ExistingRecipeSuggestionCard({
       </Link>
       <p className="mt-1 text-sm text-gray-500">{suggestion.reason}</p>
       <div className="mt-2 flex items-center justify-between">
-        <p className="text-xs text-gray-400">献立トレイへドラッグ、またはボタンで追加</p>
+        <p className="text-xs text-gray-400">🧺 献立トレイへドラッグ、またはボタンで追加</p>
         <AddToTrayButton
           genre={genre}
           assignment={{

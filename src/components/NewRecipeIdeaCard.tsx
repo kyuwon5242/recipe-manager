@@ -19,7 +19,7 @@ export function NewRecipeIdeaCard({ idea }: { idea: NewRecipeIdea }) {
       <p className="font-semibold">{idea.title}</p>
       <p className="mt-1 text-sm text-gray-500">{idea.reason}</p>
       <div className="mt-2 flex items-center justify-between">
-        <p className="text-xs text-gray-400">献立トレイへドラッグ、またはボタンで追加(未登録)</p>
+        <p className="text-xs text-gray-400">🧺 献立トレイへドラッグ、またはボタンで追加(未登録)</p>
         <AddToTrayButton genre={idea.recipe.genre} assignment={{ kind: "idea", idea }} />
       </div>
       <button

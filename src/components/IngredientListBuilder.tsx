@@ -425,8 +425,8 @@ export function IngredientListBuilder({
     setDraftItems((prev) => prev.filter((item) => item.key !== key));
   }
 
-  function addDraftItem() {
-    const category = categoryOrder[0] ?? DEFAULT_CATEGORY;
+  function addDraftItem(targetCategory?: string) {
+    const category = targetCategory ?? categoryOrder[0] ?? DEFAULT_CATEGORY;
     setDraftItems((prev) => [
       ...prev,
       { key: crypto.randomUUID(), name: "", quantity: null, unit: null, category },
@@ -565,6 +565,13 @@ export function IngredientListBuilder({
                     </div>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => addDraftItem(category)}
+                  className="mt-2 text-xs text-brand-700 hover:underline"
+                >
+                  + この分類に追加
+                </button>
               </div>
             );
           })}
@@ -572,10 +579,11 @@ export function IngredientListBuilder({
 
         <button
           type="button"
-          onClick={addDraftItem}
+          onClick={() => addDraftItem()}
+          title="新しい分類の食材として追加します(あとでカテゴリ欄を書き換えられます)"
           className="text-sm text-brand-700 hover:underline"
         >
-          + 食材を追加
+          + 食材を追加(新しい分類)
         </button>
 
         <StoreSelector stores={stores} selectedStoreId={selectedStoreId} onChange={setSelectedStoreId} />

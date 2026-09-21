@@ -34,10 +34,10 @@ export function AddToTrayButton({
       title="タップすると、画面右の献立トレイの空いている枠に追加されます"
       className={
         className ??
-        "rounded-full border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95"
+        "max-w-full truncate rounded-full border border-brand-300 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95"
       }
     >
-      {status === "added" ? "追加しました" : status === "full" ? "満杯です" : "+ トレイに追加"}
+      {status === "added" ? "追加しました" : status === "full" ? "満杯です" : "🧺 献立トレイに追加"}
     </button>
   );
 }

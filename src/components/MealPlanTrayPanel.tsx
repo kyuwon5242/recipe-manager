@@ -74,7 +74,10 @@ export function MealPlanTrayPanel() {
 
   return (
     <aside className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 shadow-raised lg:sticky lg:top-4 lg:w-72">
-      <h2 className="font-semibold">献立トレイ</h2>
+      <h2 className="flex items-center gap-1.5 font-semibold">
+        <span aria-hidden="true">🧺</span>
+        献立トレイ
+      </h2>
       <p className="mt-1 text-xs text-gray-500">
         レシピをドラッグ&ドロップ、またはカードの「+ 献立トレイに追加」ボタンで枠に設定してください。
       </p>

@@ -26,7 +26,7 @@ const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    caption: "品目ごとにまとめて決めたいときは",
+    caption: "献立を決めたいときは",
     steps: [
       { icon: "🍽️", label: "献立提案で品目ごとに考えてもらう" },
       { icon: "🧺", label: "献立トレイへ" },
@@ -36,7 +36,8 @@ const SCENARIOS: Scenario[] = [
   {
     caption: "とにかく急いでいるときは",
     steps: [
-      { icon: "🍳", label: "レシピを選ぶ" },
+      { icon: "📝", label: "食材リストを作成を開く" },
+      { icon: "🍳", label: "レシピにチェックを入れる" },
       { icon: "🛒", label: "今日はこれで買い物リストを作る" },
     ],
   },
