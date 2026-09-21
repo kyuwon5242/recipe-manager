@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMealPlanTray } from "@/lib/meal-plan-tray/context";
 import { readDragPayload } from "@/lib/meal-plan-tray/drag";
 import { registerRecipeIdea } from "@/app/recipes/actions";
+import { useIsTouchDevice } from "@/lib/hooks/useIsTouchDevice";
 import { TRAY_GENRES, type TrayGenre } from "@/types/meal-plan-tray";
 
 export function MealPlanTrayPanel() {
@@ -13,6 +14,7 @@ export function MealPlanTrayPanel() {
   const [isSubmitting, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const isTouch = useIsTouchDevice();
 
   const filledSlots = slots.filter((s) => s.assignment);
   const ideaCount = filledSlots.filter((s) => s.assignment?.kind === "idea").length;
@@ -73,13 +75,13 @@ export function MealPlanTrayPanel() {
   }
 
   return (
-    <aside className="w-full shrink-0 rounded-lg border border-gray-200 bg-white p-4 shadow-raised lg:sticky lg:top-4 lg:w-72">
+    <aside className="w-full shrink-0 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4 shadow-raised lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:w-72">
       <h2 className="flex items-center gap-1.5 font-semibold">
         <span aria-hidden="true">🧺</span>
         献立トレイ
       </h2>
       <p className="mt-1 text-xs text-gray-500">
-        レシピをドラッグ&ドロップ、またはカードの「+ 献立トレイに追加」ボタンで枠に設定してください。
+        カードの「🧺 献立トレイに追加」ボタンで枠に設定できます{isTouch ? "" : "(PCではドラッグ&ドロップも使えます)"}。
       </p>
 
       <div className="mt-3 space-y-1">
@@ -88,14 +90,17 @@ export function MealPlanTrayPanel() {
           return (
             <div key={genre} className="flex items-center justify-between text-sm">
               <span>{genre}</span>
-              <input
-                type="number"
-                min={0}
-                max={5}
+              <select
                 value={count}
-                onChange={(e) => handleCountChange(genre, Number(e.target.value) || 0)}
-                className="w-14 rounded-md border border-gray-300 px-2 py-1 text-sm"
-              />
+                onChange={(e) => handleCountChange(genre, Number(e.target.value))}
+                className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+              >
+                {[0, 1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
             </div>
           );
         })}
@@ -136,13 +141,17 @@ export function MealPlanTrayPanel() {
                   <div className="mt-1 flex items-center justify-between">
                     <label className="flex items-center gap-1 text-gray-500">
                       人前
-                      <input
-                        type="number"
-                        min={1}
+                      <select
                         value={slot.servings}
-                        onChange={(e) => setServings(slot.id, Number(e.target.value) || 1)}
-                        className="w-14 rounded-md border border-gray-300 px-1 py-0.5"
-                      />
+                        onChange={(e) => setServings(slot.id, Number(e.target.value))}
+                        className="rounded-md border border-gray-300 px-1 py-0.5"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <button
                       type="button"
@@ -154,7 +163,9 @@ export function MealPlanTrayPanel() {
                   </div>
                 </div>
               ) : (
-                <p className="mt-1 text-gray-400">ここにレシピをドラッグ</p>
+                <p className="mt-1 text-gray-400">
+                  {isTouch ? "未設定" : "ここにレシピをドラッグ"}
+                </p>
               )}
             </div>
           ))

@@ -17,7 +17,6 @@ import {
 } from "@/lib/ingredients/categories";
 import {
   aggregateNeededIngredients,
-  flattenToShoppingItems,
   type AggregateIngredientInput,
   type AggregateRecipeInput,
   type NeededIngredient,
@@ -394,21 +393,6 @@ export function IngredientListBuilder({
     });
   }
 
-  // 手持ちの確認を省略し、必要な食材をそのまま(スーパーの売り場順で)買い物
-  // リストとして確定する近道。「今日はこれで買い物リストを作る」用。
-  function handleQuickCreate() {
-    setConfirmError(null);
-    setOverwriteCandidates(null);
-    const items = sortByCategoryOrder(flattenToShoppingItems(neededIngredients), activeCategoryOrder);
-
-    if (items.length === 0) {
-      setConfirmError("必要な食材がありません。レシピを選択してください");
-      return;
-    }
-
-    submitShoppingList(items);
-  }
-
   function updateDraftItem(key: string, patch: Partial<DraftItem>) {
     setDraftItems((prev) => {
       const next = prev.map((item) => (item.key === key ? { ...item, ...patch } : item));
@@ -477,7 +461,7 @@ export function IngredientListBuilder({
       <div className="mt-6 space-y-6">
         <StepIndicator current={currentStep} />
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">食材リスト(下書き)</h2>
+          <h2 className="text-lg font-semibold">買い物リスト(下書き)</h2>
           <button
             type="button"
             onClick={() => setStep("select")}
@@ -487,14 +471,8 @@ export function IngredientListBuilder({
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          カテゴリの見出し(⠿)をドラッグすると並び替えできます。数量・単位・カテゴリは直接編集できます。
+          必要な食材をもとに買い物リストの下書きを作成しました。内容を確認・編集し、よろしければ下部のボタンで買い物リストとして確定してください。カテゴリの見出し(⠿)をドラッグすると並び替えできます。
         </p>
-
-        <datalist id="category-suggestions">
-          {CATEGORY_SUGGESTIONS.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
 
         <div className="space-y-4">
           {categoryOrder.map((category) => {
@@ -518,52 +496,63 @@ export function IngredientListBuilder({
                   <span>{category}</span>
                 </div>
                 <div className="space-y-2">
-                  {items.map((item) => (
-                    <div key={item.key} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => updateDraftItem(item.key, { name: e.target.value })}
-                        placeholder="食材名"
-                        className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                      <input
-                        type="number"
-                        value={item.quantity ?? ""}
-                        onChange={(e) =>
-                          updateDraftItem(item.key, {
-                            quantity: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                        placeholder="数量"
-                        className="w-20 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={item.unit ?? ""}
-                        onChange={(e) => updateDraftItem(item.key, { unit: e.target.value })}
-                        placeholder="単位"
-                        className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                      <input
-                        type="text"
-                        list="category-suggestions"
-                        value={item.category}
-                        onChange={(e) =>
-                          updateDraftItem(item.key, { category: e.target.value || DEFAULT_CATEGORY })
-                        }
-                        placeholder="カテゴリ"
-                        className="w-24 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeDraftItem(item.key)}
-                        className="px-2 text-sm text-gray-400 hover:text-red-600"
+                  {items.map((item) => {
+                    const categoryOptions = CATEGORY_SUGGESTIONS.includes(item.category)
+                      ? CATEGORY_SUGGESTIONS
+                      : [item.category, ...CATEGORY_SUGGESTIONS];
+                    return (
+                      <div
+                        key={item.key}
+                        className="flex flex-col gap-1.5 rounded-md border border-gray-100 p-2 sm:flex-row sm:items-center sm:border-0 sm:p-0"
                       >
-                        削除
-                      </button>
-                    </div>
-                  ))}
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => updateDraftItem(item.key, { name: e.target.value })}
+                          placeholder="食材名"
+                          className="rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:flex-1"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={item.quantity ?? ""}
+                            onChange={(e) =>
+                              updateDraftItem(item.key, {
+                                quantity: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            placeholder="数量"
+                            className="w-16 min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:w-20 sm:flex-none"
+                          />
+                          <input
+                            type="text"
+                            value={item.unit ?? ""}
+                            onChange={(e) => updateDraftItem(item.key, { unit: e.target.value })}
+                            placeholder="単位"
+                            className="w-12 min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:w-16 sm:flex-none"
+                          />
+                          <select
+                            value={item.category}
+                            onChange={(e) => updateDraftItem(item.key, { category: e.target.value })}
+                            className="min-w-0 flex-1 rounded-md border border-gray-300 px-1 py-1.5 text-sm sm:w-24 sm:flex-none"
+                          >
+                            {categoryOptions.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => removeDraftItem(item.key)}
+                            className="shrink-0 px-1 text-sm text-gray-400 hover:text-red-600"
+                          >
+                            削除
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   type="button"
@@ -622,6 +611,9 @@ export function IngredientListBuilder({
   return (
     <div className="mt-6 space-y-6">
       <StepIndicator current={currentStep} />
+      <p className="text-xs text-gray-500">
+        作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
+      </p>
       <div>
         <div className="flex items-center justify-between">
           <label className="block text-sm font-medium text-gray-700">レシピを選択</label>
@@ -694,21 +686,31 @@ export function IngredientListBuilder({
                       {isSelected ? (
                         <div className="flex shrink-0 items-center gap-1 text-xs text-gray-500">
                           <span>人前</span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={
+                          {(() => {
+                            const current =
                               servingsTargets[recipe.id] ??
-                              (recipe.servings && recipe.servings > 0 ? recipe.servings : 1)
-                            }
-                            onChange={(e) =>
-                              setServingsTargets((prev) => ({
-                                ...prev,
-                                [recipe.id]: Number(e.target.value) || 1,
-                              }))
-                            }
-                            className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                          />
+                              (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
+                            const servingsOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+                            if (!servingsOptions.includes(current)) servingsOptions.push(current);
+                            return (
+                              <select
+                                value={current}
+                                onChange={(e) =>
+                                  setServingsTargets((prev) => ({
+                                    ...prev,
+                                    [recipe.id]: Number(e.target.value),
+                                  }))
+                                }
+                                className="rounded-md border border-gray-300 px-1 py-1 text-sm"
+                              >
+                                {servingsOptions.map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                            );
+                          })()}
                         </div>
                       ) : null}
                     </div>
@@ -747,54 +749,93 @@ export function IngredientListBuilder({
                       すべて持っている
                     </label>
                   </div>
-                  <div className="space-y-3">
-                    {items.map((ingredient) => (
-                      <div key={ingredient.key} className="text-sm">
-                        <div className="font-medium text-gray-800">{ingredient.name}</div>
-                        <div className="mt-1 space-y-1">
-                          {ingredient.segments.map((seg) => {
-                            const owned = ownedState[seg.segmentKey] ?? { checked: false, quantity: "" };
-                            const negligible = isNegligibleSegment(seg);
-                            return (
-                              <div
-                                key={seg.segmentKey}
-                                className="flex items-center justify-between gap-2"
-                              >
-                                <label className="flex flex-1 items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={owned.checked}
-                                    onChange={() => toggleOwned(seg.segmentKey)}
-                                  />
-                                  {negligible ? (
-                                    <span className="text-xs text-gray-300">
-                                      {seg.unit || "適量"}
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-400">
-                                      必要: {seg.quantity}
-                                      {seg.unit ?? ""}
-                                    </span>
-                                  )}
-                                </label>
-                                {owned.checked ? (
-                                  <div className="flex shrink-0 items-center gap-1">
-                                    <input
-                                      type="number"
-                                      value={owned.quantity}
-                                      onChange={(e) => setOwnedQuantity(seg.segmentKey, e.target.value)}
-                                      placeholder="分量(任意)"
-                                      className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                                    />
-                                    <span className="w-8 text-xs text-gray-400">{seg.unit ?? ""}</span>
-                                  </div>
-                                ) : null}
+                  <div className="space-y-2">
+                    {items.map((ingredient) => {
+                      if (ingredient.segments.length === 1) {
+                        const seg = ingredient.segments[0];
+                        const owned = ownedState[seg.segmentKey] ?? { checked: false, quantity: "" };
+                        const negligible = isNegligibleSegment(seg);
+                        return (
+                          <div key={ingredient.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <label className="flex flex-1 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={owned.checked}
+                                onChange={() => toggleOwned(seg.segmentKey)}
+                              />
+                              <span className="font-medium text-gray-800">{ingredient.name}</span>
+                              {negligible ? (
+                                <span className="text-xs text-gray-300">{seg.unit || "適量"}</span>
+                              ) : (
+                                <span className="text-gray-400">
+                                  必要: {seg.quantity}
+                                  {seg.unit ?? ""}
+                                </span>
+                              )}
+                            </label>
+                            {owned.checked ? (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <input
+                                  type="number"
+                                  value={owned.quantity}
+                                  onChange={(e) => setOwnedQuantity(seg.segmentKey, e.target.value)}
+                                  placeholder="分量(任意)"
+                                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                />
+                                <span className="w-8 text-xs text-gray-400">{seg.unit ?? ""}</span>
                               </div>
-                            );
-                          })}
+                            ) : null}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={ingredient.key} className="text-sm">
+                          <div className="font-medium text-gray-800">{ingredient.name}</div>
+                          <div className="mt-1 space-y-1">
+                            {ingredient.segments.map((seg) => {
+                              const owned = ownedState[seg.segmentKey] ?? { checked: false, quantity: "" };
+                              const negligible = isNegligibleSegment(seg);
+                              return (
+                                <div
+                                  key={seg.segmentKey}
+                                  className="flex items-center justify-between gap-2"
+                                >
+                                  <label className="flex flex-1 items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={owned.checked}
+                                      onChange={() => toggleOwned(seg.segmentKey)}
+                                    />
+                                    {negligible ? (
+                                      <span className="text-xs text-gray-300">
+                                        {seg.unit || "適量"}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">
+                                        必要: {seg.quantity}
+                                        {seg.unit ?? ""}
+                                      </span>
+                                    )}
+                                  </label>
+                                  {owned.checked ? (
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <input
+                                        type="number"
+                                        value={owned.quantity}
+                                        onChange={(e) => setOwnedQuantity(seg.segmentKey, e.target.value)}
+                                        placeholder="分量(任意)"
+                                        className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                                      />
+                                      <span className="w-8 text-xs text-gray-400">{seg.unit ?? ""}</span>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -827,19 +868,10 @@ export function IngredientListBuilder({
             type="button"
             onClick={handleGenerateDraft}
             disabled={selectedRecipeIds.size === 0}
-            title="手持ちの食材を確認しながら、買い物リストの下書きを作ります"
+            title="手持ちの食材を確認し、買い物リストの下書きを作ります"
             className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50 disabled:active:scale-100"
           >
-            食材リストを作成
-          </button>
-          <button
-            type="button"
-            onClick={handleQuickCreate}
-            disabled={selectedRecipeIds.size === 0 || isConfirming}
-            className="rounded-md border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50 active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-            title="手持ちの確認をせず、必要な食材をそのまま買い物リストにします"
-          >
-            {isConfirming ? "作成中..." : "今日はこれで買い物リストを作る"}
+            次に買い物リストを作成
           </button>
         </div>
       )}

@@ -5,21 +5,23 @@ import { RecipeForm } from "@/components/RecipeForm";
 import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { createRecipe } from "@/app/recipes/actions";
 import { setDragPayload } from "@/lib/meal-plan-tray/drag";
+import { useIsTouchDevice } from "@/lib/hooks/useIsTouchDevice";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 
 export function NewRecipeIdeaCard({ idea }: { idea: NewRecipeIdea }) {
   const [expanded, setExpanded] = useState(false);
+  const isTouch = useIsTouchDevice();
 
   return (
     <li
-      draggable
+      draggable={!isTouch}
       onDragStart={(e) => setDragPayload(e, { kind: "idea", idea })}
-      className="cursor-grab rounded-lg border border-gray-200 bg-white p-4 shadow-raised active:cursor-grabbing"
+      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-raised ${isTouch ? "" : "cursor-grab active:cursor-grabbing"}`}
     >
       <p className="font-semibold">{idea.title}</p>
       <p className="mt-1 text-sm text-gray-500">{idea.reason}</p>
       <div className="mt-2 flex items-center justify-between">
-        <p className="text-xs text-gray-400">🧺 献立トレイへドラッグ、またはボタンで追加(未登録)</p>
+        <p className="text-xs text-gray-400">🧺 ボタンで献立トレイに追加(未登録)</p>
         <AddToTrayButton genre={idea.recipe.genre} assignment={{ kind: "idea", idea }} />
       </div>
       <button

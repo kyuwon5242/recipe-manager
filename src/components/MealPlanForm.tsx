@@ -32,14 +32,17 @@ export function MealPlanForm() {
             {SLOT_GENRES.map((genre) => (
               <label key={genre} className="flex items-center gap-2 text-sm">
                 {genre}
-                <input
-                  type="number"
+                <select
                   name={`count_${genre}`}
-                  min={0}
-                  max={5}
                   defaultValue={1}
-                  className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                />
+                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                >
+                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
               </label>
             ))}
           </div>

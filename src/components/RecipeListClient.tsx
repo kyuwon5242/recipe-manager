@@ -7,6 +7,7 @@ import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import { setDragPayload } from "@/lib/meal-plan-tray/drag";
+import { useIsTouchDevice } from "@/lib/hooks/useIsTouchDevice";
 
 type RecipeListItem = {
   id: string;
@@ -25,6 +26,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
   const [searchText, setSearchText] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("すべて");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
+  const isTouch = useIsTouchDevice();
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -113,7 +115,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
               <li key={recipe.id} className="relative">
                 <Link
                   href={`/recipes/${recipe.id}`}
-                  draggable
+                  draggable={!isTouch}
                   onDragStart={(e) =>
                     setDragPayload(e, {
                       kind: "existing",
@@ -123,7 +125,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       genre: recipe.genre,
                     })
                   }
-                  className="block h-full cursor-grab rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 active:cursor-grabbing"
+                  className={`block h-full rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 ${isTouch ? "" : "cursor-grab active:cursor-grabbing"}`}
                 >
                   <p className="pr-8 font-semibold">{recipe.title}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">

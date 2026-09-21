@@ -15,10 +15,6 @@ const HELP_ITEMS = [
     desc: "①作る予定のレシピを選ぶ→②手持ちの食材を確認する→③買い物リストを作成、の順に進みます。",
   },
   {
-    label: "「今日はこれで買い物リストを作る」",
-    desc: "手持ちの確認を省略して、必要な食材をそのまま買い物リストにする近道です。",
-  },
-  {
     label: "スーパーの選択",
     desc: "家族設定で登録したスーパーを選ぶと、そのスーパーの売り場順で買い物リストが並びます。",
   },
@@ -121,9 +117,6 @@ export default async function ShoppingListPage({
         <h1 className="text-2xl font-bold">食材リストを作成</h1>
         <HelpPanel title="食材リストを作成" items={HELP_ITEMS} />
       </div>
-      <p className="mt-2 text-sm text-gray-500">
-        作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
-      </p>
       <IngredientListBuilder
         recipes={builderRecipes}
         initialSelections={initialSelections}

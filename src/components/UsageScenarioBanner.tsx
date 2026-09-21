@@ -38,7 +38,7 @@ const SCENARIOS: Scenario[] = [
     steps: [
       { icon: "📝", label: "食材リストを作成を開く" },
       { icon: "🍳", label: "レシピにチェックを入れる" },
-      { icon: "🛒", label: "今日はこれで買い物リストを作る" },
+      { icon: "🛒", label: "次に買い物リストを作成" },
     ],
   },
 ];
@@ -64,9 +64,9 @@ export function UsageScenarioBanner() {
     >
       <div key={index} style={{ animation: "banner-fade 0.4s ease" }}>
         <p className="text-xs font-semibold text-brand-700">{scenario.caption}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-2">
+        <div className="mt-2 flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2">
           {scenario.steps.map((step, i) => (
-            <div key={step.label} className="flex items-center gap-1">
+            <div key={step.label} className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:gap-1">
               <div className="flex items-center gap-2 rounded-lg bg-paper px-3 py-2">
                 <span aria-hidden="true" className="text-lg">
                   {step.icon}
@@ -74,8 +74,9 @@ export function UsageScenarioBanner() {
                 <span className="text-xs font-medium text-gray-700">{step.label}</span>
               </div>
               {i < scenario.steps.length - 1 ? (
-                <span aria-hidden="true" className="px-1 text-gray-300">
-                  →
+                <span aria-hidden="true" className="flex justify-center text-gray-300 sm:px-1">
+                  <span className="sm:hidden">↓</span>
+                  <span className="hidden sm:inline">→</span>
                 </span>
               ) : null}
             </div>

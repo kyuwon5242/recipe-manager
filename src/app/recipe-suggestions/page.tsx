@@ -22,7 +22,7 @@ export default function RecipeSuggestionsPage() {
         <HelpPanel title="新レシピ提案" items={HELP_ITEMS} />
       </div>
       <p className="mt-2 text-sm text-gray-500">
-        気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。AIが新しいレシピ案を考えます。案は献立トレイへドラッグして枠に設定できます。
+        気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。AIが新しいレシピ案を考えます。案は献立トレイに追加できます。
       </p>
       <RecipeSuggestionForm />
     </WithMealPlanTray>
