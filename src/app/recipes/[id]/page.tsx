@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -68,18 +67,6 @@ export default async function RecipeDetailPage({
           "カテゴリ未設定"}
         {recipe.servings ? ` ・ ${recipe.servings}人前` : ""}
       </p>
-
-      {recipe.photo_url ? (
-        <div className="relative mt-4 h-64 w-full overflow-hidden rounded-lg bg-gray-100">
-          <Image
-            src={recipe.photo_url}
-            alt={recipe.title}
-            fill
-            sizes="48rem"
-            className="object-cover"
-          />
-        </div>
-      ) : null}
 
       {recipe.recipe_url ? (
         <p className="mt-4 text-sm">

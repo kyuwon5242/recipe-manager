@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { SubmitButton } from "@/components/SubmitButton";
 
 type IngredientRow = { name: string; quantity: string; unit: string };
@@ -17,7 +16,6 @@ type RecipeFormProps = {
     instructions: string | null;
     memo: string | null;
     recipe_url: string | null;
-    photo_url: string | null;
   };
   initialIngredients?: IngredientRow[];
 };
@@ -117,26 +115,6 @@ export function RecipeForm({
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700">写真</label>
-        {initialRecipe?.photo_url ? (
-          <div className="relative mt-2 h-32 w-32 overflow-hidden rounded-md bg-gray-100">
-            <Image
-              src={initialRecipe.photo_url}
-              alt="現在の写真"
-              fill
-              className="object-cover"
-            />
-          </div>
-        ) : null}
-        <input
-          type="file"
-          name="photo"
-          accept="image/*"
-          className="mt-2 block w-full text-sm"
-        />
       </div>
 
       <div>

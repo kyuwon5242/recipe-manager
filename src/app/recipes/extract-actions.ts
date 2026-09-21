@@ -3,6 +3,9 @@
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createAnthropicClient } from "@/lib/anthropic/client";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentFamilyId } from "@/lib/family/current";
+import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 
 const ExtractedIngredientSchema = z.object({
   name: z.string(),
@@ -33,7 +36,6 @@ export type ExtractRecipeResult =
         instructions: string | null;
         memo: string | null;
         recipe_url: string | null;
-        photo_url: string | null;
       };
       ingredients: { name: string; quantity: string; unit: string }[];
     }
@@ -139,6 +141,7 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
 
   let parsedOutput: z.infer<typeof ExtractedRecipeSchema> | null;
   try {
+    const stopTimer = startTimer();
     const response = await client.messages.parse({
       // ページ本文からのレシピ抽出も構造化データの読み取りが中心の機械的な
       // タスクであり、フロンティア級のモデルを必要としないため、コストの低い
@@ -151,6 +154,19 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
       output_config: { format: zodOutputFormat(ExtractedRecipeSchema) },
     });
     parsedOutput = response.parsed_output;
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await logAiUsage(supabase, {
+      familyId: await getCurrentFamilyId().catch(() => null),
+      userId: user?.id ?? null,
+      feature: "recipe_url_extract",
+      model: "claude-haiku-4-5-20251001",
+      usage: response.usage,
+      durationMs: stopTimer(),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "不明なエラー";
     return { ok: false, error: `レシピ情報の解析に失敗しました: ${message}` };
@@ -177,7 +193,6 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
       instructions: parsedOutput.instructions,
       memo: parsedOutput.memo,
       recipe_url: parsed.toString(),
-      photo_url: null,
     },
     ingredients: parsedOutput.ingredients.map((ingredient) => ({
       name: ingredient.name,

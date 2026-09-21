@@ -4,8 +4,9 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "食材の整理" };
 // AIによる整理は食材数が多いと数分かかることがあるため、Vercel上でも
-// タイムアウトしないよう上限を延長する(Hobbyプランでは60秒が上限)。
-export const maxDuration = 300;
+// タイムアウトしないよう上限を延長する(Hobbyプランの実際の上限である
+// 60秒を指定。それ以上は仕様上Hobbyでは延長できない)。
+export const maxDuration = 60;
 
 export default async function IngredientsPage() {
   // 家族を跨いだ共有辞書全体を書き換える、コストのかかる一括AI処理のため

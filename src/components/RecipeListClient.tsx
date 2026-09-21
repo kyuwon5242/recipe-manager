@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { AddToTrayButton } from "@/components/AddToTrayButton";
@@ -15,7 +14,6 @@ type RecipeListItem = {
   category: string | null;
   genre: string | null;
   servings: number | null;
-  photo_url: string | null;
   is_favorite: boolean;
   ingredientNames: string[];
 };
@@ -127,17 +125,6 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                   }
                   className="block h-full cursor-grab rounded-lg border border-gray-200 bg-white p-4 pb-11 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500 active:cursor-grabbing"
                 >
-                  {recipe.photo_url ? (
-                    <div className="relative mb-3 h-32 w-full overflow-hidden rounded-md bg-gray-100">
-                      <Image
-                        src={recipe.photo_url}
-                        alt={recipe.title}
-                        fill
-                        sizes="(min-width: 640px) 20rem, 100vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : null}
                   <p className="pr-8 font-semibold">{recipe.title}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {recipe.category ? (

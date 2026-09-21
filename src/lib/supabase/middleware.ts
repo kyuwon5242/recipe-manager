@@ -1,11 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAppVersion } from "@/lib/version";
+import { logEvent, startTimer } from "@/lib/logging/log";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/suspended"];
 const APP_VERSION_COOKIE = "app_version";
+// これを超えた処理時間のリクエストは、遅延調査用にapp_logsへ記録する。
+// Vercel無料プランのRuntime Logsは1時間しか残らないため、これで補う。
+const SLOW_REQUEST_MS = 1500;
 
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  const stopTimer = startTimer();
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -44,6 +49,13 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
   if (user && versionChanged && pathname !== "/login") {
     await supabase.auth.signOut();
+    await logEvent(supabase, {
+      level: "warn",
+      event: "forced_signout_version_change",
+      path: pathname,
+      userId: user.id,
+      metadata: { fromVersion: cookieVersion, toVersion: currentVersion },
+    });
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("reason", "updated");
@@ -72,6 +84,12 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
 
       if (profile?.is_suspended) {
         await supabase.auth.signOut();
+        await logEvent(supabase, {
+          level: "warn",
+          event: "suspended_user_access_blocked",
+          path: pathname,
+          userId: user.id,
+        });
         const url = request.nextUrl.clone();
         url.pathname = "/suspended";
         return NextResponse.redirect(url);
@@ -98,6 +116,17 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         return NextResponse.redirect(url);
       }
     }
+  }
+
+  const durationMs = stopTimer();
+  if (durationMs > SLOW_REQUEST_MS) {
+    await logEvent(supabase, {
+      level: "warn",
+      event: "slow_request",
+      path: pathname,
+      userId: user?.id ?? null,
+      durationMs,
+    });
   }
 
   // Important: return supabaseResponse as-is so the refreshed auth cookies propagate.

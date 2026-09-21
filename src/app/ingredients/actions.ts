@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin/current";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/categories";
+import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 
 const ClusterSchema = z.object({
   canonical_name: z.string(),
@@ -49,7 +50,7 @@ export async function cleanupIngredients(
 ): Promise<CleanupState> {
   // 家族を跨いだ共有辞書全体を書き換える操作のため、管理者のみ実行可能にする
   // (通常のメンテナンスの範囲を超える、コストのかかる一括AI処理のため)。
-  const { supabase } = await requireAdmin();
+  const { supabase, userId } = await requireAdmin();
 
   const { data: rows, error } = await supabase
     .from("ingredients_master")
@@ -100,6 +101,7 @@ export async function cleanupIngredients(
   for (const nameChunk of chunk(targets.map((r) => r.name), CHUNK_SIZE)) {
     let clusters: z.infer<typeof ClusterResultSchema>["clusters"] = [];
     try {
+      const stopTimer = startTimer();
       const response = await client.messages.parse({
         // 食材名マスタの整理は機械的な分類タスクであり、コストの低いモデルを
         // 使う(全件対象だった頃はフロンティア級モデルのコストが積み上がる
@@ -120,6 +122,14 @@ export async function cleanupIngredients(
         output_config: { format: zodOutputFormat(ClusterResultSchema) },
       });
       clusters = response.parsed_output?.clusters ?? [];
+      await logAiUsage(supabase, {
+        familyId: null,
+        userId,
+        feature: "ingredient_cleanup",
+        model: "claude-haiku-4-5-20251001",
+        usage: response.usage,
+        durationMs: stopTimer(),
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "不明なエラー";
       return { result: null, error: `AIによる整理に失敗しました: ${message}` };

@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -59,57 +58,14 @@ function parseIngredientRows(formData: FormData): ParsedIngredientRow[] {
     .filter((row) => row.name.length > 0);
 }
 
-// アップロードを許可する画像形式(SVGは埋め込みスクリプトによる蓄積型XSSの
-// リスクがあるため意図的に除外している)
-const ALLOWED_PHOTO_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-};
-const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-
-async function uploadPhotoIfProvided(
-  supabase: SupabaseServerClient,
-  formData: FormData,
-  familyId: string
-): Promise<string | null> {
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) {
-    return null;
-  }
-
-  const ext = ALLOWED_PHOTO_TYPES[file.type];
-  if (!ext) {
-    throw new Error("画像はJPEG/PNG/WebP/GIF形式のみアップロードできます");
-  }
-  if (file.size > MAX_PHOTO_SIZE_BYTES) {
-    throw new Error("画像サイズは5MB以内にしてください");
-  }
-
-  const path = `${familyId}/${randomUUID()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from("recipe-photos")
-    .upload(path, file, { contentType: file.type });
-
-  if (error) {
-    throw new Error(`写真のアップロードに失敗しました: ${error.message}`);
-  }
-
-  const { data } = supabase.storage.from("recipe-photos").getPublicUrl(path);
-  return data.publicUrl;
-}
-
 async function insertRecipe(
   supabase: SupabaseServerClient,
   familyId: string,
-  fields: ParsedRecipeFields,
-  photoUrl: string | null
+  fields: ParsedRecipeFields
 ): Promise<string> {
   const { data: recipe, error } = await supabase
     .from("recipes")
-    .insert({ ...fields, photo_url: photoUrl, family_id: familyId })
+    .insert({ ...fields, family_id: familyId })
     .select("id")
     .single();
 
@@ -160,9 +116,8 @@ export async function createRecipe(formData: FormData) {
   const familyId = await getCurrentFamilyId();
   const fields = parseRecipeFields(formData);
   const ingredientRows = parseIngredientRows(formData);
-  const photoUrl = await uploadPhotoIfProvided(supabase, formData, familyId);
 
-  const recipeId = await insertRecipe(supabase, familyId, fields, photoUrl);
+  const recipeId = await insertRecipe(supabase, familyId, fields);
   await saveRecipeIngredients(supabase, recipeId, ingredientRows);
 
   revalidatePath("/recipes");
@@ -171,15 +126,10 @@ export async function createRecipe(formData: FormData) {
 
 export async function updateRecipe(id: string, formData: FormData) {
   const supabase = await createClient();
-  const familyId = await getCurrentFamilyId();
   const fields = parseRecipeFields(formData);
   const ingredientRows = parseIngredientRows(formData);
-  const photoUrl = await uploadPhotoIfProvided(supabase, formData, familyId);
 
-  const { error } = await supabase
-    .from("recipes")
-    .update({ ...fields, ...(photoUrl ? { photo_url: photoUrl } : {}) })
-    .eq("id", id);
+  const { error } = await supabase.from("recipes").update(fields).eq("id", id);
 
   if (error) {
     throw new Error(`レシピの更新に失敗しました: ${error.message}`);
@@ -253,7 +203,7 @@ export async function registerRecipeIdea(idea: {
     }))
     .filter((row) => row.name.length > 0);
 
-  const recipeId = await insertRecipe(supabase, familyId, fields, null);
+  const recipeId = await insertRecipe(supabase, familyId, fields);
   await saveRecipeIngredients(supabase, recipeId, ingredientRows);
 
   revalidatePath("/recipes");

@@ -15,7 +15,6 @@ type Prefill = {
     instructions: string | null;
     memo: string | null;
     recipe_url: string | null;
-    photo_url: string | null;
   };
   ingredients: { name: string; quantity: string; unit: string }[];
 };

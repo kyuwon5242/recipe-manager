@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-21(フェーズ14時点)
+最終更新: 2026-09-21(フェーズ16時点)
 
 ---
 
@@ -58,7 +58,7 @@
 
 | ID | ユースケース | アクター | 画面/機能 |
 |---|---|---|---|
-| RCP-1 | レシピを手動で新規登録する(材料・手順・写真・参照URLを含む) | 家族メンバー/オーナー | `/recipes/new` |
+| RCP-1 | レシピを手動で新規登録する(材料・手順・参照URLを含む) | 家族メンバー/オーナー | `/recipes/new` |
 | RCP-2 | レシピサイトのURLを入力し、AIに材料・手順を自動入力させて登録する | 家族メンバー/オーナー | `/recipes/new` |
 | RCP-3 | レシピ一覧を閲覧する | 家族メンバー/オーナー | `/recipes` |
 | RCP-4 | ジャンル別タブ(主食/主菜/副菜/汁物/その他)でレシピを絞り込む | 家族メンバー/オーナー | `/recipes` |
@@ -66,7 +66,7 @@
 | RCP-6 | カテゴリ(和食/洋食/中華など)でレシピを絞り込む | 家族メンバー/オーナー | `/recipes` |
 | RCP-7 | レシピにいいねする/取り消す(家族全体で共有) | 家族メンバー/オーナー | `/recipes`, `/recipes/[id]` |
 | RCP-8 | お気に入りのレシピのみ表示する | 家族メンバー/オーナー | `/recipes` |
-| RCP-9 | レシピの詳細(材料・手順・メモ・写真)を確認する | 家族メンバー/オーナー | `/recipes/[id]` |
+| RCP-9 | レシピの詳細(材料・手順・メモ)を確認する | 家族メンバー/オーナー | `/recipes/[id]` |
 | RCP-10 | レシピを編集する | 家族メンバー/オーナー | `/recipes/[id]/edit` |
 | RCP-11 | レシピを削除する | 家族メンバー/オーナー | `/recipes/[id]` |
 
@@ -137,6 +137,8 @@
 | ADMIN-3 | ユーザーを利用停止/解除する(自分自身は不可) | 管理者 | `/admin/users` |
 | ADMIN-4 | ユーザーごとに献立エージェントの利用可否を切り替える(管理者自身は常に利用可) | 管理者 | `/admin/users` |
 | ADMIN-5 | 食材マスタの表記ゆれ・カテゴリ誤りをAIで一括整理する(未分類・旧タクソノミーを対象にした増分処理) | 管理者 | `/ingredients` |
+| ADMIN-6 | ユーザー別・機能別のAI利用トークン数と概算コスト(ドル)を確認する | 管理者 | `/admin/ai-usage` |
+| ADMIN-7 | エラー・警告・処理時間(遅延)のログをレベル別に確認する | 管理者 | `/admin/logs` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -189,6 +191,8 @@ ADMIN-2/3(問題のあるユーザーを確認・利用停止) → ADMIN-5(食�
 | `/admin` | 管理者ダッシュボード | 要管理者 |
 | `/admin/recipes` | 全家族のレシピ一覧(横断参照・編集) | 要管理者 |
 | `/admin/users` | 全ユーザー一覧(表示名編集・利用停止) | 要管理者 |
+| `/admin/ai-usage` | AI利用量(ユーザー別・機能別のトークン数・概算コスト) | 要管理者 |
+| `/admin/logs` | アプリログ(トレース・エラー・処理時間) | 要管理者 |
 
 ## C. データベース仕様(現在のスキーマ)
 
@@ -199,15 +203,17 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `profiles` | `id`(PK, →auth.users), `email`, `display_name`, `avatar_url`, `is_admin`, `is_suspended`, `can_use_menu_agent`, `created_at` | ユーザープロフィール。サインアップ時に`handle_new_user()`トリガーで自動作成 |
 | `families` | `id`(PK), `name`, `invite_code`(unique), `owner_id`(→profiles), `created_at` | 家族。作成・招待参加はRPC(`create_family`/`join_family_with_code`)経由 |
 | `family_members` | `family_id`+`user_id`(複合PK), `role`(owner/member), `joined_at` | 家族の所属関係 |
-| `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `photo_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ |
+| `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ(フェーズ16で`photo_url`列を廃止) |
 | `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照) |
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
 | `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
 | `family_stores` | `id`(PK), `family_id`(→families), `name`, `category_order`(text[]), `position`, `created_at` | 家族の「よく使うスーパー」(最大10件、アプリ側で制御)。カテゴリの並び順を保持 |
 | `family_default_items` | `id`(PK), `family_id`(→families), `name`, `quantity`, `unit`, `category`, `position`, `created_at` | 家族の「どの買い物でも必ず含める食材」 |
+| `ai_usage_logs` | `id`(PK), `family_id`(→families, null可), `user_id`(→profiles, null可), `feature`, `model`, `input_tokens`, `output_tokens`, `duration_ms`, `created_at` | AI呼び出しごとの利用量記録。閲覧は管理者限定 |
+| `app_logs` | `id`(PK), `level`(info/warn/error), `event`, `message`, `path`, `user_id`(→profiles, null可), `family_id`(→families, null可), `duration_ms`, `metadata`(jsonb), `created_at` | アプリ全体のトレース・エラー・処理時間ログ。閲覧は管理者限定 |
 
-主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)。
+主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)。
 
 マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0008_fix_admin_bootstrap_trigger.sql`(詳細は5〜14章の各フェーズ記録を参照)。
 
@@ -216,7 +222,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | 要素 | 技術 |
 |---|---|
 | フロントエンド/バックエンド | Next.js 16(App Router, Turbopack, Server Actions) |
-| データベース・認証・ストレージ | Supabase(PostgreSQL, Auth, Storage) |
+| データベース・認証 | Supabase(PostgreSQL, Auth)。Storageはフェーズ16でレシピ写真機能を廃止したため現在未使用 |
 | AI | Anthropic API。用途によりモデルを使い分け(下記) |
 | ホスティング | Vercel(GitHub連携で自動デプロイ) |
 | スタイリング | Tailwind CSS v4(`@theme`でブランドカラー`brand-*`をカスタム定義) |
@@ -967,3 +973,51 @@ Vercelの無料(Hobby)プランでも独自ドメインの追加自体に費用�
 ### 20.6 バナー文言の変更
 
 「品目ごとにまとめて決めたいときは」を「献立を決めたいときは」に変更した。
+
+## 21. 初期登録時のデフォルトレシピ・AI利用量の可視化・アプリログ基盤(フェーズ15)
+
+バックログのうち4件(初期登録時のデフォルトレシピ、AI利用量の可視化、アクセスログ/トレース、DB・Webサーバの拡張性確認)にまとめて着手した。着手前に4件それぞれの進め方を提案し、合意を得てから実装している。
+
+### 21.1 初期登録時のデフォルトレシピ
+
+`create_family()`(RPC)を拡張し、新しい家族を作成した際に代表的なレシピ6品(和食・洋食・中華 各2品、主食・主菜・副菜・汁物が一通り揃うように選定)を自動投入するようにした(`supabase/migrations/0010_default_recipes_on_family_create.sql`)。写真は無しでテキストのみ。食材マスタへの投入は`on conflict (name) do nothing`で重複を避けている。既存の家族には影響しない(新規`create_family()`呼び出し時のみ発火)。
+
+### 21.2 DB・Webサーバの拡張性/制限の調査
+
+Supabase・Vercelともに無料プランで運用しており、家族向けにまだ公開していない(実運用前)ため、現状の利用実績からではなく無料プランの上限値をもとに容量を試算した。調査の結果、**写真ストレージ(Supabase Storage 1GB)が最初のボトルネックになりやすい**という結論に至った(DB容量・帯域・関数呼び出し回数は当面問題にならない見込み)。
+
+調査の過程で、献立エージェント(`/api/menu-agent`)にVercel関数の実行時間上限(`maxDuration`)が設定されておらず、Hobbyプランの既定値10秒でタイムアウトする可能性がある不具合を発見し、修正した(`/ingredients`と同じパターンで60秒を明示。Hobbyプランの実際の上限は60秒であるため、`/ingredients`の既存の300秒指定も60に修正した)。
+
+### 21.3 AI利用量の可視化(`ai_usage_logs`)
+
+新規テーブル`ai_usage_logs`(`supabase/migrations/0011_ai_usage_logs.sql`)を追加し、AIを呼び出す6箇所(新レシピ提案・献立提案・レシピURL自動抽出・食材名解決・食材マスタ一括整理・献立エージェントの門番判定/本体ループ)全てに、呼び出し直後にトークン数・処理時間を記録する処理(`logAiUsage`、`src/lib/ai-usage/log.ts`)を追加した。
+
+- 管理者向け画面`/admin/ai-usage`で、ユーザー別(家族名・機能別内訳つき)にトークン数と概算コスト($、`src/lib/ai-usage/pricing.ts`にAnthropicの公式単価を保持)を確認できる
+- 閲覧は管理者限定(RLS)。記録の失敗でAI機能自体が止まらないよう、ログ書き込みは例外を握りつぶす設計にしている
+- 今回のスコープは可視化まで。ユーザーごとの利用上限・制限機能は、可視化で実データを見てから改めて着手する方針で合意している(バックログに残してある)
+
+### 21.4 アプリログ基盤(`app_logs`)・トレース
+
+Vercel無料プランのRuntime Logsは保持期間が短い(1時間)ため、エラー調査・処理時間の傾向把握には向かないと判断し、Supabase側に汎用のログテーブル`app_logs`(`supabase/migrations/0012_app_logs.sql`)と記録用ヘルパー(`logEvent`、`src/lib/logging/log.ts`)を追加した。未ログイン状態のイベントも記録できるよう、挿入はログイン状態を問わず許可し、閲覧のみ管理者限定にしている。
+
+初期の記録対象として、以下に組み込んだ:
+
+- ミドルウェア(`src/lib/supabase/middleware.ts`): バージョン変更による強制サインアウト、利用停止ユーザーのアクセス遮断を`warn`として記録。加えて、ミドルウェア処理が1.5秒を超えた場合も`slow_request`として記録し、処理時間の傾向を追えるようにした
+- 献立エージェント(`/api/menu-agent`)のトップレベルの例外を`error`として記録
+
+管理者向け画面`/admin/logs`で、レベル(info/warn/error)別にログを絞り込んで確認できる。
+
+**今後の展開**: 今回は基盤整備と代表的な箇所への組み込みに留めており、他のServer Action・画面への展開は必要に応じて追加する想定(全箇所を一度に網羅する設計はあえて見送った)。
+
+## 22. レシピ写真アップロード機能の廃止(フェーズ16)
+
+フェーズ15の容量試算で「Supabase Storage(無料枠1GB)がレシピ写真の蓄積により最初のボトルネックになりやすい」という結論が出たことを受け、写真アップロード機能そのものを廃止した。
+
+- `RecipeForm`から写真アップロード欄(ファイル入力・現在の写真プレビュー)を削除
+- `src/app/recipes/actions.ts`の`uploadPhotoIfProvided()`・許可画像形式・サイズ上限の定数を削除し、`createRecipe`/`updateRecipe`/`registerRecipeIdea`から写真関連の処理を除去
+- レシピ一覧のカード写真・詳細画面の写真表示を削除(`RecipeListClient`、`/recipes/[id]`)
+- `RecipePrefill`・`Recipe`型から`photo_url`を削除し、AI系のアクション(新レシピ提案・献立提案・レシピURL抽出・献立エージェント)が組み立てていた`photo_url: null`の指定も併せて削除
+- `supabase/migrations/0013_remove_recipe_photos.sql`で、`recipe-photos`バケット用のRLSポリシーと`recipes.photo_url`列を削除
+- `next.config.ts`の`images.remotePatterns`(Supabase Storage用)も不要になったため削除
+
+**手動対応が必要な作業**: 既にアップロード済みの画像データ(実ファイル)は、マイグレーションでは削除していない。Supabaseダッシュボードの Storage 画面から`recipe-photos`バケットを空にする(または削除する)操作を手動で行う必要がある(実データの削除はダッシュボード経由が確実なため)。

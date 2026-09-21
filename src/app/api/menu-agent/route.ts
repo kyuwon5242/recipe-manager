@@ -13,6 +13,8 @@ import {
 } from "@/lib/ingredients/aggregate";
 import { sortByCategoryOrder } from "@/lib/ingredients/categories";
 import { getFamilyDefaultItemsAsIngredients } from "@/lib/shopping/defaults";
+import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
+import { logEvent } from "@/lib/logging/log";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 import {
   MENU_AGENT_TOOLS,
@@ -28,6 +30,12 @@ import {
   type ShoppingDraftItem,
   type MenuAgentChatMessage,
 } from "@/lib/anthropic/menu-agent-tools";
+
+// 複数ラウンドのツール呼び出しループで数十秒かかることがあるため、
+// Vercel上でもタイムアウトしないよう上限を延長する(Hobbyプランの実際の
+// 上限である60秒を指定。/ingredientsの300秒指定はHobbyでは60秒に
+// クランプされるため、実態に合わせてここでは60を明示する)。
+export const maxDuration = 60;
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -86,7 +94,7 @@ export async function POST(req: Request) {
       };
 
       try {
-        const gate = await runGateCheck(client, messages);
+        const gate = await runGateCheck(client, messages, supabase, familyId, admin.userId);
         if (!gate.in_scope) {
           send({
             type: "out_of_scope",
@@ -99,11 +107,27 @@ export async function POST(req: Request) {
           return;
         }
 
-        await runAgentLoop({ client, supabase, familyId, messages, mealPlan, send });
+        await runAgentLoop({
+          client,
+          supabase,
+          familyId,
+          userId: admin.userId,
+          messages,
+          mealPlan,
+          send,
+        });
         send({ type: "done" });
       } catch (err) {
         const message = err instanceof Error ? err.message : "不明なエラーが発生しました";
         send({ type: "error", message });
+        await logEvent(supabase, {
+          level: "error",
+          event: "menu_agent_failed",
+          message,
+          path: "/api/menu-agent",
+          userId: admin.userId,
+          familyId,
+        });
       } finally {
         controller.close();
       }
@@ -117,10 +141,14 @@ export async function POST(req: Request) {
 
 async function runGateCheck(
   client: Anthropic,
-  messages: MenuAgentChatMessage[]
+  messages: MenuAgentChatMessage[],
+  supabase: SupabaseServerClient,
+  familyId: string,
+  userId: string
 ): Promise<{ in_scope: boolean; redirect_message: string | null }> {
   const recent = messages.slice(-GATE_HISTORY_TURNS);
   try {
+    const stopTimer = startTimer();
     const response = await client.messages.parse({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
@@ -134,6 +162,14 @@ async function runGateCheck(
       ],
       // claude-haiku-4-5はeffortパラメータ非対応のためformatのみ指定する
       output_config: { format: zodOutputFormat(GateResultSchema) },
+    });
+    await logAiUsage(supabase, {
+      familyId,
+      userId,
+      feature: "menu_agent_gate",
+      model: "claude-haiku-4-5-20251001",
+      usage: response.usage,
+      durationMs: stopTimer(),
     });
     const parsed = response.parsed_output;
     if (!parsed) return { in_scope: true, redirect_message: null };
@@ -183,11 +219,12 @@ async function runAgentLoop(params: {
   client: Anthropic;
   supabase: SupabaseServerClient;
   familyId: string;
+  userId: string;
   messages: MenuAgentChatMessage[];
   mealPlan: PlanItem[];
   send: (event: MenuAgentEvent) => void;
 }) {
-  const { client, supabase, familyId, messages, mealPlan, send } = params;
+  const { client, supabase, familyId, userId, messages, mealPlan, send } = params;
 
   const workingPlan: PlanItem[] = mealPlan.map((item) => ({ ...item }));
   const ideaMap = new Map<string, NewRecipeIdea>();
@@ -199,12 +236,23 @@ async function runAgentLoop(params: {
   }));
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const stopTimer = startTimer();
     const response = await client.messages.create({
       model: "claude-opus-5",
       max_tokens: 4096,
       system: buildSystemPrompt(workingPlan),
       messages: anthropicMessages,
       tools: MENU_AGENT_TOOLS,
+    });
+    const roundDurationMs = stopTimer();
+
+    await logAiUsage(supabase, {
+      familyId,
+      userId,
+      feature: "menu_agent_loop",
+      model: "claude-opus-5",
+      usage: response.usage,
+      durationMs: roundDurationMs,
     });
 
     const textParts: string[] = [];
@@ -385,7 +433,6 @@ async function executeTool(params: {
           instructions: input.instructions ?? null,
           memo: null,
           recipe_url: null,
-          photo_url: null,
         },
         ingredients: input.ingredients.map((ing) => ({
           name: ing.name,

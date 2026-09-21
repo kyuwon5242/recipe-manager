@@ -2,6 +2,8 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { INGREDIENT_CATEGORIES } from "@/lib/ingredients/categories";
+import { getCurrentFamilyId } from "@/lib/family/current";
+import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -58,6 +60,7 @@ export async function resolveIngredientIds(
   let resolutions: z.infer<typeof ResolutionSchema>["resolutions"] = [];
   try {
     const client = createAnthropicClient();
+    const stopTimer = startTimer();
     const response = await client.messages.parse({
       // 食材名の名寄せは機械的な分類タスクであり、新レシピ提案などの創造的な
       // 生成と違ってフロンティア級の推論力を必要としないため、コストの低い
@@ -78,6 +81,18 @@ export async function resolveIngredientIds(
       output_config: { format: zodOutputFormat(ResolutionSchema) },
     });
     resolutions = response.parsed_output?.resolutions ?? [];
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await logAiUsage(supabase, {
+      familyId: await getCurrentFamilyId().catch(() => null),
+      userId: user?.id ?? null,
+      feature: "ingredient_resolve",
+      model: "claude-haiku-4-5-20251001",
+      usage: response.usage,
+      durationMs: stopTimer(),
+    });
   } catch {
     resolutions = [];
   }

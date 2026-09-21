@@ -6,7 +6,6 @@ export type RecipePrefill = {
   instructions: string | null;
   memo: string | null;
   recipe_url: string | null;
-  photo_url: string | null;
 };
 
 export type IngredientPrefill = { name: string; quantity: string; unit: string };

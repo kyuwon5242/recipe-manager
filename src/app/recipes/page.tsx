@@ -22,7 +22,6 @@ type RecipeRow = {
   category: string | null;
   genre: string | null;
   servings: number | null;
-  photo_url: string | null;
   is_favorite: boolean;
   recipe_ingredients: { ingredients_master: { name: string } | null }[];
 };
@@ -32,7 +31,7 @@ export default async function RecipesPage() {
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select(
-      "id, title, category, genre, servings, photo_url, is_favorite, created_at, recipe_ingredients(ingredients_master(name))"
+      "id, title, category, genre, servings, is_favorite, created_at, recipe_ingredients(ingredients_master(name))"
     )
     .order("created_at", { ascending: false })
     .returns<RecipeRow[]>();
@@ -47,7 +46,6 @@ export default async function RecipesPage() {
     category: recipe.category,
     genre: recipe.genre,
     servings: recipe.servings,
-    photo_url: recipe.photo_url,
     is_favorite: recipe.is_favorite,
     ingredientNames: recipe.recipe_ingredients
       .map((ri) => ri.ingredients_master?.name)

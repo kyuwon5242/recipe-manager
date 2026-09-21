@@ -4,6 +4,8 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
+import { getCurrentFamilyId } from "@/lib/family/current";
+import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 import type { NewRecipeIdea, RecipePrefill } from "@/types/recipe-suggestion";
 
 const GENRE_ORDER = ["主食", "主菜", "副菜", "汁物"] as const;
@@ -134,12 +136,26 @@ export async function suggestMealPlan(
   }\n\n【登録済みレシピ一覧】\n${JSON.stringify(recipeSummaries)}`;
 
   try {
+    const stopTimer = startTimer();
     const response = await client.messages.parse({
       model: "claude-opus-5",
       max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
       output_config: { format: zodOutputFormat(MealPlanSchema), effort: "medium" },
+    });
+    const durationMs = stopTimer();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    await logAiUsage(supabase, {
+      familyId: await getCurrentFamilyId().catch(() => null),
+      userId: user?.id ?? null,
+      feature: "menu_plan",
+      model: "claude-opus-5",
+      usage: response.usage,
+      durationMs,
     });
 
     const parsed = response.parsed_output;
@@ -167,7 +183,6 @@ export async function suggestMealPlan(
         instructions: newRecipe?.instructions ?? null,
         memo: null,
         recipe_url: null,
-        photo_url: null,
       };
 
       return {

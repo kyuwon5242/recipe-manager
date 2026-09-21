@@ -36,6 +36,28 @@ export default async function AdminPage() {
         </li>
         <li>
           <Link
+            href="/admin/ai-usage"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">AI利用量</p>
+            <p className="mt-1 text-sm text-gray-500">
+              ユーザー別・機能別のトークン使用量と概算コストを確認できます。
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/admin/logs"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">アプリログ</p>
+            <p className="mt-1 text-sm text-gray-500">
+              エラー・警告・処理時間のトレースを確認できます。
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/menu-agent"
             className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
           >

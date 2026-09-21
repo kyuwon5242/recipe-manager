@@ -7,7 +7,6 @@ export type Recipe = {
   instructions: string | null;
   memo: string | null;
   recipe_url: string | null;
-  photo_url: string | null;
   is_favorite: boolean;
   family_id: string;
   created_by: string;
