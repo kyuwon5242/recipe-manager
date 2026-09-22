@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { revalidatePath } from "next/cache";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { createClient } from "@/lib/supabase/server";
+import { requireAiFeatureAccess } from "@/lib/admin/current";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 import { getAiQuotaStatus, consumeAiQuota } from "@/lib/ai-usage/quota";
@@ -114,6 +115,15 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
   }
   if (isBlockedHost(parsed.hostname)) {
     return { ok: false, error: "このURLは指定できません" };
+  }
+
+  try {
+    await requireAiFeatureAccess();
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "この機能の利用には管理者の許可が必要です",
+    };
   }
 
   const supabase = await createClient();

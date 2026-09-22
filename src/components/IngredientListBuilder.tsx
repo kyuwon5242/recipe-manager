@@ -13,8 +13,9 @@ import { getCategoryColor } from "@/lib/category-color";
 import {
   INGREDIENT_CATEGORIES,
   UNCATEGORIZED_LABEL,
-  sortByCategoryOrder,
+  categoryIcon,
 } from "@/lib/ingredients/categories";
+import { isCountUnit, countQuantityOptionsFor } from "@/lib/ingredients/units";
 import {
   aggregateNeededIngredients,
   type AggregateIngredientInput,
@@ -342,13 +343,16 @@ export function IngredientListBuilder({
       }
     }
 
+    // どのカテゴリも見出しごと表示したままにする(中身が0件でも「+ この
+    // 分類に追加」から始められるように)。実際に使われている分類(未分類など)
+    // が定型の並びに無ければ末尾に追加する。
+    const fullOrder = [...activeCategoryOrder];
+    for (const item of items) {
+      if (!fullOrder.includes(item.category)) fullOrder.push(item.category);
+    }
+
     setDraftItems(items);
-    setCategoryOrder(
-      sortByCategoryOrder(
-        Array.from(new Set(items.map((i) => i.category))).map((category) => ({ category })),
-        activeCategoryOrder
-      ).map((c) => c.category)
-    );
+    setCategoryOrder(fullOrder);
     setConfirmError(null);
     setStep("draft");
   }
@@ -358,7 +362,10 @@ export function IngredientListBuilder({
   function submitShoppingList(items: CreateShoppingListItemInput[]) {
     startConfirm(async () => {
       try {
-        await createShoppingList(items, { storeId: selectedStoreId || null });
+        await createShoppingList(items, {
+          storeId: selectedStoreId || null,
+          recipeIds: Array.from(selectedRecipeIds),
+        });
       } catch (err) {
         if (isRedirectError(err)) throw err;
         if (err instanceof Error && err.message === SHOPPING_LIST_LIMIT_MESSAGE) {
@@ -385,6 +392,7 @@ export function IngredientListBuilder({
         await createShoppingList(pendingItems, {
           storeId: selectedStoreId || null,
           overwriteListId: selectedOverwriteId,
+          recipeIds: Array.from(selectedRecipeIds),
         });
       } catch (err) {
         if (isRedirectError(err)) throw err;
@@ -409,8 +417,7 @@ export function IngredientListBuilder({
     setDraftItems((prev) => prev.filter((item) => item.key !== key));
   }
 
-  function addDraftItem(targetCategory?: string) {
-    const category = targetCategory ?? categoryOrder[0] ?? DEFAULT_CATEGORY;
+  function addDraftItem(category: string) {
     setDraftItems((prev) => [
       ...prev,
       { key: crypto.randomUUID(), name: "", quantity: null, unit: null, category },
@@ -477,7 +484,6 @@ export function IngredientListBuilder({
         <div className="space-y-4">
           {categoryOrder.map((category) => {
             const items = draftItems.filter((item) => item.category === category);
-            if (items.length === 0) return null;
             return (
               <div
                 key={category}
@@ -493,8 +499,13 @@ export function IngredientListBuilder({
                   className="mb-2 flex cursor-move items-center gap-2 text-sm font-semibold text-gray-600"
                 >
                   <span>⠿</span>
-                  <span>{category}</span>
+                  <span>
+                    {categoryIcon(category)} {category}
+                  </span>
                 </div>
+                {items.length === 0 ? (
+                  <p className="text-xs text-gray-300">まだ食材がありません</p>
+                ) : null}
                 <div className="space-y-2">
                   {items.map((item) => {
                     const categoryOptions = CATEGORY_SUGGESTIONS.includes(item.category)
@@ -513,17 +524,36 @@ export function IngredientListBuilder({
                           className="rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:flex-1"
                         />
                         <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            value={item.quantity ?? ""}
-                            onChange={(e) =>
-                              updateDraftItem(item.key, {
-                                quantity: e.target.value ? Number(e.target.value) : null,
-                              })
-                            }
-                            placeholder="数量"
-                            className="w-16 min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:w-20 sm:flex-none"
-                          />
+                          {isCountUnit(item.unit) ? (
+                            <select
+                              value={item.quantity ?? ""}
+                              onChange={(e) =>
+                                updateDraftItem(item.key, {
+                                  quantity: e.target.value ? Number(e.target.value) : null,
+                                })
+                              }
+                              className="w-16 min-w-0 flex-1 rounded-md border border-gray-300 px-1 py-1.5 text-sm sm:w-20 sm:flex-none"
+                            >
+                              <option value="">数量</option>
+                              {countQuantityOptionsFor(item.quantity).map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="number"
+                              value={item.quantity ?? ""}
+                              onChange={(e) =>
+                                updateDraftItem(item.key, {
+                                  quantity: e.target.value ? Number(e.target.value) : null,
+                                })
+                              }
+                              placeholder="数量"
+                              className="w-16 min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm sm:w-20 sm:flex-none"
+                            />
+                          )}
                           <input
                             type="text"
                             value={item.unit ?? ""}
@@ -565,15 +595,6 @@ export function IngredientListBuilder({
             );
           })}
         </div>
-
-        <button
-          type="button"
-          onClick={() => addDraftItem()}
-          title="新しい分類の食材として追加します(あとでカテゴリ欄を書き換えられます)"
-          className="text-sm text-brand-700 hover:underline"
-        >
-          + 食材を追加(新しい分類)
-        </button>
 
         <StoreSelector stores={stores} selectedStoreId={selectedStoreId} onChange={setSelectedStoreId} />
 
@@ -739,7 +760,9 @@ export function IngredientListBuilder({
               return (
                 <div key={category} className="rounded-md border border-gray-200 bg-white p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-gray-500">{category}</h3>
+                    <h3 className="text-xs font-semibold text-gray-500">
+                      {categoryIcon(category)} {category}
+                    </h3>
                     <label className="flex items-center gap-1 text-xs text-gray-500">
                       <input
                         type="checkbox"

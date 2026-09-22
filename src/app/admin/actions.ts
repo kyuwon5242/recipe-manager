@@ -56,3 +56,18 @@ export async function toggleMenuAgentAccess(userId: string, nextValue: boolean) 
 
   revalidatePath("/admin/users");
 }
+
+export async function toggleAiFeatureAccess(userId: string, nextValue: boolean) {
+  const { supabase } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ can_use_ai_features: nextValue })
+    .eq("id", userId);
+
+  if (error) {
+    throw new Error(`AI機能利用権限の更新に失敗しました: ${error.message}`);
+  }
+
+  revalidatePath("/admin/users");
+}

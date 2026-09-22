@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { signOut } from "@/app/auth/actions";
 import { ZONES, type Zone } from "@/lib/zones";
 
-const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title: string }[] = [
+const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title: string; aiGated?: boolean }[] = [
   { href: "/recipes", label: "レシピ一覧", zone: "recipe", title: "登録済みのレシピを探す・見返す" },
   {
     href: "/recipe-suggestions",
     label: "新レシピ提案",
     zone: "ai",
     title: "AIに新しいレシピ案を考えてもらう",
+    aiGated: true,
   },
   {
     href: "/menu-plan",
@@ -19,6 +20,7 @@ const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title
     zone: "ai",
     icon: "🍽️",
     title: "品目ごとに献立をまとめて提案してもらう",
+    aiGated: true,
   },
   {
     href: "/shopping-list",
@@ -46,18 +48,21 @@ export function HeaderNav({
   familyName,
   isAdmin,
   canUseMenuAgent,
+  canUseAiFeatures,
   userEmail,
 }: {
   familyName: string | null;
   isAdmin: boolean;
   canUseMenuAgent: boolean;
+  canUseAiFeatures: boolean;
   userEmail: string;
 }) {
   const pathname = usePathname();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.aiGated || canUseAiFeatures);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-sm">
-      {NAV_ITEMS.map((item) => (
+      {visibleNavItems.map((item) => (
         <Link
           key={item.href}
           href={item.href}

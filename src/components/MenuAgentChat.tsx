@@ -9,6 +9,7 @@ import {
   type ShoppingListSummary,
 } from "@/app/shopping-list/actions";
 import { SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
+import { categoryIcon } from "@/lib/ingredients/categories";
 import {
   PLAN_SLOTS,
   type MenuAgentChatMessage,
@@ -273,7 +274,10 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
             unit: item.unit,
             category: item.category,
           })),
-          { storeId: selectedStoreId || null }
+          {
+            storeId: selectedStoreId || null,
+            recipeIds: currentPlan.map((item) => item.recipeId).filter((id): id is string => Boolean(id)),
+          }
         );
       } catch (err) {
         if (isRedirectError(err)) throw err;
@@ -305,7 +309,11 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
             unit: item.unit,
             category: item.category,
           })),
-          { storeId: selectedStoreId || null, overwriteListId: selectedOverwriteId }
+          {
+            storeId: selectedStoreId || null,
+            overwriteListId: selectedOverwriteId,
+            recipeIds: plan.map((item) => item.recipeId).filter((id): id is string => Boolean(id)),
+          }
         );
       } catch (err) {
         if (isRedirectError(err)) throw err;
@@ -554,7 +562,9 @@ function AgentTurnView({ events }: { events: TurnEvent[] }) {
             <div key={i} className="w-full rounded-xl bg-white p-3 shadow-raised">
               {groupByCategory(group.items).map(([category, items]) => (
                 <div key={category} className="mt-2 first:mt-0">
-                  <p className="text-[10px] font-bold text-green-700">{category}</p>
+                  <p className="text-[10px] font-bold text-green-700">
+                    {categoryIcon(category)} {category}
+                  </p>
                   {items.map((item, k) => (
                     <div key={k} className="flex justify-between py-0.5 text-xs text-gray-700">
                       <span>{item.name}</span>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireAiFeatureAccess } from "@/lib/admin/current";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
@@ -85,6 +86,15 @@ export async function suggestMealPlan(
 
   if (slots.length === 0) {
     return { result: null, error: "含めたい品目を1品以上指定してください" };
+  }
+
+  try {
+    await requireAiFeatureAccess();
+  } catch (err) {
+    return {
+      result: null,
+      error: err instanceof Error ? err.message : "この機能の利用には管理者の許可が必要です",
+    };
   }
 
   const supabase = await createClient();

@@ -25,6 +25,48 @@ const VOLUME_UNIT_FACTORS: Record<string, number> = {
   カップ: 200,
 };
 
+// 「1個」「2本」のように個数で数える単位。手入力の手間とばらつきを減らす
+// ため、これらの単位が選ばれているときは分量を<select>の選択式にする
+// (g/ml等の連続値は選択肢を固定できないため対象外)。
+export const COUNT_UNITS = [
+  "個",
+  "本",
+  "枚",
+  "切れ",
+  "尾",
+  "匹",
+  "玉",
+  "株",
+  "房",
+  "袋",
+  "缶",
+  "丁",
+  "束",
+  "片",
+  "粒",
+  "パック",
+  "合",
+] as const;
+
+// 個数単位の分量として選択肢に出す代表値。既存データにこれ以外の値が
+// 入っている場合は、呼び出し側で現在値を選択肢に追加すること。
+export const COUNT_QUANTITY_OPTIONS = [0.25, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10] as const;
+
+export function isCountUnit(unit: string | null | undefined): boolean {
+  if (!unit) return false;
+  return (COUNT_UNITS as readonly string[]).includes(unit.trim());
+}
+
+// 個数単位の分量<select>に出す選択肢。既存データがCOUNT_QUANTITY_OPTIONSに
+// 無い値(AI提案由来の0.33など)の場合も表示・選択できるよう、現在値を
+// 選択肢に加える。
+export function countQuantityOptionsFor(current: number | null): number[] {
+  if (current == null || (COUNT_QUANTITY_OPTIONS as readonly number[]).includes(current)) {
+    return [...COUNT_QUANTITY_OPTIONS];
+  }
+  return [...COUNT_QUANTITY_OPTIONS, current].sort((a, b) => a - b);
+}
+
 export function normalizeUnit(unit: string | null): { group: UnitGroup; factor: number } | null {
   if (!unit) return null;
   const trimmed = unit.trim();

@@ -3,6 +3,7 @@ import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
+import { AiFeatureLockedNotice } from "@/components/AiFeatureLockedNotice";
 import { createClient } from "@/lib/supabase/server";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
@@ -22,7 +23,18 @@ const HELP_ITEMS = [
 
 export default async function MenuPlanPage() {
   const supabase = await createClient();
-  const quota = await getAiQuotaStatus(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("is_admin, can_use_ai_features")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const canUseAi = (profile?.is_admin || profile?.can_use_ai_features) ?? false;
+  const quota = canUseAi ? await getAiQuotaStatus(supabase) : null;
 
   return (
     <WithMealPlanTray>
@@ -34,8 +46,14 @@ export default async function MenuPlanPage() {
       <p className="mt-2 text-sm text-gray-500">
         含めたい品目(主食・主菜・副菜・汁物)の品数と条件を入力すると、登録済みレシピの中から組み合わせた献立を1セット提案します。気に入ったものは献立トレイに追加できます。
       </p>
-      <AiQuotaGauge status={quota} />
-      <MealPlanForm />
+      {canUseAi ? (
+        <>
+          {quota ? <AiQuotaGauge status={quota} /> : null}
+          <MealPlanForm />
+        </>
+      ) : (
+        <AiFeatureLockedNotice />
+      )}
     </WithMealPlanTray>
   );
 }

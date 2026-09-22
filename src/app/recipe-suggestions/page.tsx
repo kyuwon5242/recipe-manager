@@ -3,6 +3,7 @@ import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
+import { AiFeatureLockedNotice } from "@/components/AiFeatureLockedNotice";
 import { createClient } from "@/lib/supabase/server";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
@@ -18,7 +19,18 @@ const HELP_ITEMS = [
 
 export default async function RecipeSuggestionsPage() {
   const supabase = await createClient();
-  const quota = await getAiQuotaStatus(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("is_admin, can_use_ai_features")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const canUseAi = (profile?.is_admin || profile?.can_use_ai_features) ?? false;
+  const quota = canUseAi ? await getAiQuotaStatus(supabase) : null;
 
   return (
     <WithMealPlanTray>
@@ -30,8 +42,14 @@ export default async function RecipeSuggestionsPage() {
       <p className="mt-2 text-sm text-gray-500">
         気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。AIが新しいレシピ案を考えます。案は献立トレイに追加できます。
       </p>
-      <AiQuotaGauge status={quota} />
-      <RecipeSuggestionForm />
+      {canUseAi ? (
+        <>
+          {quota ? <AiQuotaGauge status={quota} /> : null}
+          <RecipeSuggestionForm />
+        </>
+      ) : (
+        <AiFeatureLockedNotice />
+      )}
     </WithMealPlanTray>
   );
 }

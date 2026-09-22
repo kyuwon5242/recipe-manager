@@ -38,6 +38,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   let familyName: string | null = null;
   let isAdmin = false;
   let canUseMenuAgent = false;
+  let canUseAiFeatures = false;
   if (user) {
     const { data } = await supabase
       .from("family_members")
@@ -49,11 +50,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_admin, can_use_menu_agent")
+      .select("is_admin, can_use_menu_agent, can_use_ai_features")
       .eq("id", user.id)
       .maybeSingle();
     isAdmin = profile?.is_admin ?? false;
     canUseMenuAgent = profile?.can_use_menu_agent ?? false;
+    canUseAiFeatures = isAdmin || (profile?.can_use_ai_features ?? false);
   }
 
   return (
@@ -79,6 +81,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 familyName={familyName}
                 isAdmin={isAdmin}
                 canUseMenuAgent={canUseMenuAgent}
+                canUseAiFeatures={canUseAiFeatures}
                 userEmail={user.email ?? ""}
               />
             ) : null}

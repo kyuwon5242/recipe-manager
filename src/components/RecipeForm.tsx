@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
+import { isCountUnit, countQuantityOptionsFor } from "@/lib/ingredients/units";
 
 type IngredientRow = { name: string; quantity: string; unit: string };
 
@@ -131,42 +132,71 @@ export function RecipeForm({
           </button>
         </div>
         <div className="mt-2 space-y-2">
-          {rows.map((row, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                type="text"
-                name="ingredient_name"
-                placeholder="食材名(例: 玉ねぎ)"
-                value={row.name}
-                onChange={(e) => updateRow(index, "name", e.target.value)}
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-              <input
-                type="text"
-                name="ingredient_quantity"
-                placeholder="数量"
-                value={row.quantity}
-                onChange={(e) => updateRow(index, "quantity", e.target.value)}
-                className="w-20 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-              <input
-                type="text"
-                name="ingredient_unit"
-                placeholder="単位"
-                value={row.unit}
-                onChange={(e) => updateRow(index, "unit", e.target.value)}
-                className="w-20 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => removeRow(index)}
-                disabled={rows.length === 1}
-                className="px-2 text-sm text-gray-400 hover:text-red-600 disabled:opacity-30"
+          {rows.map((row, index) => {
+            const useCountSelect = isCountUnit(row.unit);
+            const currentQuantity = row.quantity.trim() === "" ? null : Number(row.quantity);
+            const quantityOptions =
+              useCountSelect && Number.isFinite(currentQuantity)
+                ? countQuantityOptionsFor(currentQuantity)
+                : countQuantityOptionsFor(null);
+            return (
+              <div
+                key={index}
+                className="flex flex-col gap-1.5 rounded-md border border-gray-100 p-2 sm:flex-row sm:items-center sm:border-0 sm:p-0"
               >
-                削除
-              </button>
-            </div>
-          ))}
+                <input
+                  type="text"
+                  name="ingredient_name"
+                  placeholder="食材名(例: 玉ねぎ)"
+                  value={row.name}
+                  onChange={(e) => updateRow(index, "name", e.target.value)}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm sm:flex-1"
+                />
+                <div className="flex items-center gap-1.5">
+                  {useCountSelect ? (
+                    <select
+                      name="ingredient_quantity"
+                      value={row.quantity}
+                      onChange={(e) => updateRow(index, "quantity", e.target.value)}
+                      className="w-20 min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-2 text-sm sm:w-20 sm:flex-none"
+                    >
+                      <option value="">数量</option>
+                      {quantityOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      name="ingredient_quantity"
+                      placeholder="数量"
+                      value={row.quantity}
+                      onChange={(e) => updateRow(index, "quantity", e.target.value)}
+                      className="w-20 min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm sm:w-20 sm:flex-none"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    name="ingredient_unit"
+                    placeholder="単位"
+                    value={row.unit}
+                    onChange={(e) => updateRow(index, "unit", e.target.value)}
+                    className="w-20 min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm sm:w-20 sm:flex-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeRow(index)}
+                    disabled={rows.length === 1}
+                    className="shrink-0 px-2 text-sm text-gray-400 hover:text-red-600 disabled:opacity-30"
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

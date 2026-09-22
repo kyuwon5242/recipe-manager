@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-22(フェーズ19時点)
+最終更新: 2026-09-23(フェーズ21時点)
 
 ---
 
@@ -139,6 +139,7 @@
 | ADMIN-6 | ユーザー別・機能別のAI利用トークン数と概算コスト(ドル)を確認する | 管理者 | `/admin/ai-usage` |
 | ADMIN-7 | エラー・警告・処理時間(遅延)のログをレベル別に確認する | 管理者 | `/admin/logs` |
 | ADMIN-8 | ユーザー別AI利用上限の週間上限額を変更する、上限に達したユーザー(自分自身を含む)を個別に復活(リセット)させる | 管理者 | `/admin/ai-usage` |
+| ADMIN-9 | ユーザーごとに新レシピ提案・献立提案・レシピURL自動抽出の利用可否を切り替える(管理者自身は常に利用可) | 管理者 | `/admin/users` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -200,7 +201,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 
 | テーブル | 主なカラム | 説明 |
 |---|---|---|
-| `profiles` | `id`(PK, →auth.users), `email`, `display_name`, `avatar_url`, `is_admin`, `is_suspended`, `can_use_menu_agent`, `created_at` | ユーザープロフィール。サインアップ時に`handle_new_user()`トリガーで自動作成 |
+| `profiles` | `id`(PK, →auth.users), `email`, `display_name`, `avatar_url`, `is_admin`, `is_suspended`, `can_use_menu_agent`, `can_use_ai_features`, `created_at` | ユーザープロフィール。サインアップ時に`handle_new_user()`トリガーで自動作成 |
 | `families` | `id`(PK), `name`, `invite_code`(unique), `owner_id`(→profiles), `created_at` | 家族。作成・招待参加はRPC(`create_family`/`join_family_with_code`)経由 |
 | `family_members` | `family_id`+`user_id`(複合PK), `role`(owner/member), `joined_at` | 家族の所属関係 |
 | `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ(フェーズ16で`photo_url`列を廃止) |
@@ -208,6 +209,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
 | `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
+| `shopping_list_recipes` | `id`(PK), `shopping_list_id`(→shopping_lists), `recipe_id`(→recipes), `position` | 買い物リストのもとになったレシピ(ホームの「今回つくるレシピ」表示用) |
 | `family_stores` | `id`(PK), `family_id`(→families), `name`, `category_order`(text[]), `position`, `created_at` | 家族の「よく使うスーパー」(最大10件、アプリ側で制御)。カテゴリの並び順を保持 |
 | `family_default_items` | `id`(PK), `family_id`(→families), `name`, `quantity`, `unit`, `category`, `position`, `created_at` | 家族の「どの買い物でも必ず含める食材」 |
 | `ai_usage_logs` | `id`(PK), `family_id`(→families, null可), `user_id`(→profiles, null可), `feature`, `model`, `input_tokens`, `output_tokens`, `duration_ms`, `created_at` | AI呼び出しごとの利用量記録。閲覧は管理者限定 |
@@ -218,7 +220,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 
 主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0016_ai_quota_admin_included.sql`(詳細は5〜19章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0018_shopping_list_recipes.sql`(詳細は5〜27章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 
@@ -258,6 +260,9 @@ AIモデルの使い分け方針(フェーズ9で整理、フェーズ18で新�
 - ゾーン別カラーコーディング(機能ごとに色分けしたアイコン・ナビ現在地表示)、生成り色の背景、コンテンツが浮き上がるシャドウ
 - 献立エージェント(利用許可制・実験機能。会話しながら献立を決め、買い物リスト作成まで誘導するツール呼び出しエージェント。管理者は個別のユーザーに利用権限を付与できる)
 - ユーザー別AI利用上限(全ユーザー共通の週間上限額。管理者自身を含む全ユーザーが対象で、新レシピ提案・献立提案・レシピURL自動抽出・献立エージェントの利用ごとに消費し、トップページ・各AI機能画面に残量ゲージを表示。7日経過で自動リセット、管理者は`/admin/ai-usage`から上限額の変更と、自分自身を含む個別ユーザーの復活〈即時リセット〉が可能)
+- AI関連機能の利用許可制(新レシピ提案・献立提案・レシピURL自動抽出は、献立エージェントと同じくデフォルト非公開。管理者が`/admin/users`からユーザーごとに開放・停止できる)
+- 食材リスト・買い物リストのカテゴリ表示にアイコンを付与(10分類+未分類それぞれに絵文字を割り当て)
+- ホームに「今回つくるレシピ」を表示(直近で確定した買い物リストのもとになったレシピへワンタップでアクセスできる)
 - デプロイバージョンの表示・強制再ログイン(デプロイ後、旧バージョンのクライアントで操作を続けさせない)
 - 買い物リストの上書き保存(件数上限に達した場合)、作成・更新日時の表示
 - 家族ごとの「どの買い物でも必ず含める食材」設定
@@ -1108,3 +1113,78 @@ Vercel無料プランのRuntime Logsは保持期間が短い(1時間)ため、�
 - `/admin/ai-usage`に「ユーザー別AI利用上限」セクションを追加。週間上限額の変更フォームと、ユーザーごとの利用額・次回リセット日時の一覧、上限に達したユーザー向けの「復活させる」ボタン(即時リセット)を表示する。
 
 **手動対応が必要な作業**: `supabase/migrations/0015_ai_usage_quota.sql`と`0016_ai_quota_admin_included.sql`をSupabase SQL Editorで実行するまでは、`ai_quota_settings`/`ai_usage_quota`テーブルおよび関連RPCが存在しない(0015未実行時)か、管理者が上限の対象外のまま(0016未実行時)になる。いずれの場合もエラーにはならず、未実行の項目はフォールバック(無制限)で動作する。
+
+### 25.4 Haiku利用時の試算とOpus/Haikuの精度比較
+
+新レシピ提案・献立提案について、同一条件(実際の家族データ・同一プロンプト3パターンずつ)でOpus 5とHaiku 4.5を実行し、コストと出力内容を比較した(一時的な検証用ルートで実行、作業後に削除・リポジトリには残っていない)。
+
+**コスト(実測、実際の登録レシピ68件・品目ごとの上限適用後)**
+
+| 機能 | パターン | Opus 5 | Haiku 4.5 | 削減率 |
+|---|---|---|---|---|
+| 新レシピ提案 | 気軽(簡単な晩ごはん) | $0.086 | $0.011 | 87% |
+| 新レシピ提案 | おもてなし(手の込んだ主菜) | $0.169 | $0.015 | 91% |
+| 新レシピ提案 | 食材指定(キャベツ+豚肉) | $0.127 | $0.013 | 90% |
+| 献立提案 | 4人分・和食中心 | $0.079 | $0.013 | 84% |
+| 献立提案 | 時短・主菜2品 | $0.068 | $0.012 | 83% |
+| 献立提案 | 子ども向け | $0.079 | $0.012 | 85% |
+
+平均すると新レシピ提案は約10倍(90%減)、献立提案は約6倍(84%減)のコスト差。フェーズ18の実測(83〜90%削減)と一致する。
+
+**Haiku利用時の週間上限$2.00での利用可能量**: 新レシピ提案のみなら週154回、献立提案のみなら週167回相当。25.2の「典型的な週間利用パターン」(新レシピ提案5回+献立提案4回)をHaikuで実行した場合の週間コストは約$0.11で、$2.00に対して十分すぎる余裕がある(上限が実質的に効かない水準)。
+
+**Opus側の補足**: 今回の実測(気軽/おもてなし/食材指定の3パターン平均)は、25.1のベンチマーク(単一の「気軽」パターンのみ)より高めに出た。特に「おもてなし」のような凝った依頼は出力トークンが大きく伸びる(最大6,019トークン、うち思考トークン778)ため、25.1で採用した週間上限$2.00に対する典型利用の占有率は、当初の想定(約40%)よりもやや高め(2機能だけで約47%、レシピURL抽出・献立エージェントを含めると約51%)になる。上限自体を今回変更する必要はないと判断するが、依頼内容によってはOpusでの利用が上限を圧迫しやすい点は留意事項として記録しておく。
+
+**精度・出力内容の違い**
+
+- **新レシピ提案(創作系タスク)**: 差が大きい。Opusは調理技法の具体性(温度・時間・火加減の細かい指示、失敗しにくくする工夫の言及)、季節感の説明、登録済みレシピとの差別化理由の具体性(実際の登録レシピ名を挙げて比較)が明確。「おもてなし」パターンでは鴨肉のロースト、海老しんじょうなど技術的に高度な提案が出た。Haikuも要件(食材指定など)は正しく満たすが、手順が簡潔で技法の説明が薄く、差別化理由も「疲れている時は温かい味わいが良い」など一般論寄りになりがちで、具体的な登録レシピとの比較は弱い。
+- **献立提案(登録済みレシピから選ぶ選択・推論タスク)**: 差は小さい。品目数・スキーマ(recipe_idの妥当性など)は両モデルとも正確に満たし、Haikuが存在しないレシピIDを返す・品目を欠かすといった破綻は見られなかった。差は理由づけの深さのみで、Opusは「主菜の香りが主食の出汁味と相性が良く、副菜の酸味が全体をリセットする」のように品目間のバランスまで言及するのに対し、Haikuは「和食の定番で栄養バランスが良い」など各品目単体の説明に留まる傾向。
+- **応答速度**: Haikuは4.9〜18秒、Opusは11.6〜106秒(「おもてなし」パターンは特に長考傾向で1分46秒)。コストだけでなく体感速度もHaikuの方が大きく有利。
+
+**結論**: 献立提案(選択タスク)はHaiku切替によるコスト対効果が高い(精度低下が小さい一方、コスト6倍減・速度も大幅改善)。新レシピ提案(創作タスク)は切り替えると提案の具体性・技術的な深さが目に見えて落ちるため、コスト重視で切り替える場合はその点を許容できるかの判断が必要(`/admin/ai-settings`で機能ごとに切替可能な設計は活きている)。
+
+## 26. スマホ表示・「水」除外・個数分量の選択式化(フェーズ20)
+
+利用者からのフィードバックをもとに、細かい修正3件をまとめて対応した。
+
+### 26.1 スマホでのレシピ編集の材料欄見切れ修正
+
+`RecipeForm.tsx`(レシピ新規登録・編集の共通コンポーネント)の材料行が横一列固定のレイアウトで、スマホ幅では単位欄・削除ボタンが見切れていた。フェーズ17で食材リスト下書き画面(`IngredientListBuilder`)に適用したのと同じパターン(食材名を1行目、数量・単位・削除を2行目に折り返す`flex-col`/`sm:flex-row`)に変更した。
+
+### 26.2 食材リスト・買い物リストから「水」を除外
+
+「水はどの家庭にもある」という前提で、食材リスト・買い物リストの集計に「水」という名前の食材を含めないようにした。`aggregateNeededIngredients()`(`src/lib/ingredients/aggregate.ts`、食材リスト画面と献立エージェントの`compute_shopping_list`ツールの両方が使う共通ロジック)で、名前が「水」と完全一致する食材をスキップする1行を追加した。
+
+### 26.3 個数・本数の分量を選択式に
+
+`src/lib/ingredients/units.ts`に、個数で数える単位(個・本・枚・切れ・尾・匹・玉・株・房・袋・缶・丁・束・片・粒・パック・合)の一覧`COUNT_UNITS`と、選択肢(0.25〜10)を生成する`countQuantityOptionsFor()`を追加した。単位がこれらに該当する場合のみ、分量欄を`<select>`に切り替える(g/ml等の連続値は従来通り自由入力のまま)。適用箇所はレシピ編集(`RecipeForm.tsx`)と食材リスト下書き画面(`IngredientListBuilder.tsx`)。既存データにある0.25個・1.25本のような値も、選択肢に無ければ自動的に追加して表示する。
+
+## 27. AI機能の利用許可制化・食材リスト下書きの改善・カテゴリアイコン・「今回つくるレシピ」表示(フェーズ21)
+
+### 27.1 AI関連機能の利用許可制(デフォルト非公開)
+
+新レシピ提案・献立提案・レシピURL自動抽出は、これまで全ユーザーが無条件で使えていたが、献立エージェントと同じ「デフォルト非公開・管理者が個別に許可」方式に変更した。
+
+- `profiles.can_use_ai_features`(boolean, デフォルトfalse)を追加(`supabase/migrations/0017_ai_feature_access.sql`)。`protect_profile_admin_fields()`トリガーの保護対象にも追加し、あわせてフェーズ12(0009)で再定義された際に失われていた「SQL Editorからの操作は書き換え対象外」というフェーズ7(0008)の修正も合わせて復元した。
+- `src/lib/admin/current.ts`に`requireAiFeatureAccess()`を追加(`requireMenuAgentAccess()`と同形)。3機能の呼び出し前に確認し、権限が無ければAI呼び出しをせずエラーメッセージを返す。
+- 権限が無いユーザーには機能そのものを前面に出さない: ヘッダーナビ・ホームのカードから新レシピ提案/献立提案を非表示にし、両ページはフォームの代わりに案内を表示する。`/recipes/new`は手動登録フォームはそのまま使え、「レシピURLから自動入力」ボックスのみ非表示にする。
+- `/admin/users`に献立エージェントと並べて「🤖 AI機能利用可否」のトグルを追加(`toggleAiFeatureAccess`)。
+- 既存の非管理者ユーザーも移行時点でAI機能が使えなくなる(管理者が`/admin/users`から個別に許可する運用)。
+
+### 27.2 食材リスト下書き画面の「+食材を追加」の分かりやすさ改善
+
+下書き画面(③)で、中身が0件のカテゴリも見出しごと表示したままにするよう変更した(`IngredientListBuilder.tsx`の`handleGenerateDraft()`で、`categoryOrder`を「アイテムがあるカテゴリのみ」ではなく定型の10分類(+実際に使われた未分類)全体で初期化)。これにより、どのカテゴリにも常に「+ この分類に追加」ボタンがある状態になったため、押した際にどこに追加されるか分かりにくかったグローバルな「+ 食材を追加(新しい分類)」ボタンを削除した。
+
+### 27.3 食材リスト・買い物リストのカテゴリにアイコンを表示
+
+`src/lib/ingredients/categories.ts`に`categoryIcon()`を追加(10分類+未分類それぞれに絵文字を割り当て)。食材リスト画面(②必要な食材・③下書き)、確定済み買い物リスト(`ShoppingListChecklist`)、献立エージェントの買い物リスト下書きプレビュー(`MenuAgentChat`)のカテゴリ見出しに適用した。
+
+### 27.4 ホームに「今回つくるレシピ」を表示
+
+買い物リストのもとになったレシピへワンタップで戻れるように、直近で確定した買い物リストの元レシピをホーム画面に表示する機能を追加した。
+
+- `shopping_list_items`は名前・数量・単位・カテゴリのみでレシピとの紐付けが無かったため、新テーブル`shopping_list_recipes`(shopping_list_id, recipe_id, position)を追加(`supabase/migrations/0018_shopping_list_recipes.sql`、RLSは`shopping_list_items`と同じパターン)。
+- `createShoppingList()`(`src/app/shopping-list/actions.ts`)に`recipeIds`オプションを追加し、新規作成・上書き保存の両方で保存する。呼び出し元(`IngredientListBuilder`の選択レシピ、`MenuAgentChat`の確定済み献立プラン)から渡すよう変更した。
+- ホーム画面(`src/app/page.tsx`)で、家族の最新の買い物リスト1件に紐づくレシピ一覧を「🍳 今回つくるレシピはこれ」として表示し、各レシピ名から`/recipes/[id]`へ直接遷移できる。該当データが無ければセクション自体を表示しない。
+
+**手動対応が必要な作業**: `supabase/migrations/0017_ai_feature_access.sql`・`0018_shopping_list_recipes.sql`をSupabase SQL Editorで実行するまでは、`can_use_ai_features`列が無いことで管理者判定を含むプロフィール取得自体が失敗し、管理者メニューやAIナビも一時的に表示されなくなる(0017未実行時)。`shopping_list_recipes`関連は未実行でもエラーにはならず「今回つくるレシピ」が表示されないだけ(0018未実行時)。

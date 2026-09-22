@@ -46,6 +46,8 @@ export function aggregateNeededIngredients(recipes: AggregateRecipeInput[]): Nee
 
     for (const ingredient of recipe.ingredients) {
       const name = ingredient.name;
+      // 水はどの家庭にもある前提で、食材リスト・買い物リストには出さない。
+      if (name.trim() === "水") continue;
       if (!byName.has(name)) {
         byName.set(name, { category: ingredient.category ?? UNCATEGORIZED_LABEL, segments: new Map() });
         order.push(name);

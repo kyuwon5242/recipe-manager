@@ -17,6 +17,8 @@ export type CreateShoppingListOptions = {
   storeId?: string | null;
   // 指定すると新規作成の代わりに既存リストを上書きする(件数上限に達した場合の代替手段)
   overwriteListId?: string | null;
+  // 買い物リストのもとになったレシピ(ホームの「今回つくるレシピ」表示用)
+  recipeIds?: string[];
 };
 
 export type ShoppingListSummary = {
@@ -146,6 +148,15 @@ export async function createShoppingList(
       throw new Error(`既存の食材の削除に失敗しました: ${deleteError.message}`);
     }
 
+    const { error: deleteRecipesError } = await supabase
+      .from("shopping_list_recipes")
+      .delete()
+      .eq("shopping_list_id", existing.id);
+
+    if (deleteRecipesError) {
+      throw new Error(`既存のレシピ紐付けの削除に失敗しました: ${deleteRecipesError.message}`);
+    }
+
     const { error: updateError } = await supabase
       .from("shopping_lists")
       .update({
@@ -205,6 +216,21 @@ export async function createShoppingList(
 
   if (itemsError) {
     throw new Error(`買い物リストの保存に失敗しました: ${itemsError.message}`);
+  }
+
+  const recipeIds = Array.from(new Set(options.recipeIds ?? []));
+  if (recipeIds.length > 0) {
+    const { error: recipesError } = await supabase.from("shopping_list_recipes").insert(
+      recipeIds.map((recipeId, index) => ({
+        shopping_list_id: listId,
+        recipe_id: recipeId,
+        position: index,
+      }))
+    );
+
+    if (recipesError) {
+      throw new Error(`レシピの紐付け保存に失敗しました: ${recipesError.message}`);
+    }
   }
 
   redirect(`/shopping-lists/${listId}`);

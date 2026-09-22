@@ -53,3 +53,31 @@ export async function requireMenuAgentAccess() {
 
   return { supabase, userId: user.id };
 }
+
+// 新レシピ提案・献立提案・レシピURL自動抽出は、管理者に加えて管理者が
+// 個別に許可したユーザーのみ利用できる(requireMenuAgentAccessと同じ形)。
+export async function requireAiFeatureAccess() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("ログインが必要です");
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("is_admin, can_use_ai_features")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`権限確認に失敗しました: ${error.message}`);
+  }
+  if (!profile?.is_admin && !profile?.can_use_ai_features) {
+    throw new Error("この機能の利用には管理者の許可が必要です");
+  }
+
+  return { supabase, userId: user.id };
+}
