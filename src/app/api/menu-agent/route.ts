@@ -14,6 +14,7 @@ import {
 import { sortByCategoryOrder } from "@/lib/ingredients/categories";
 import { getFamilyDefaultItemsAsIngredients } from "@/lib/shopping/defaults";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
+import { getAiModelSettings } from "@/lib/ai-usage/model-settings";
 import { logEvent } from "@/lib/logging/log";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 import {
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
   const supabase = admin.supabase;
   const familyId = await getCurrentFamilyId();
   const client = createAnthropicClient();
+  const { menuAgentModel } = await getAiModelSettings(supabase);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -109,6 +111,7 @@ export async function POST(req: Request) {
 
         await runAgentLoop({
           client,
+          model: menuAgentModel,
           supabase,
           familyId,
           userId: admin.userId,
@@ -217,6 +220,7 @@ ${workingPlan.length > 0 ? JSON.stringify(planSummary) : "(まだ何も決まっ
 
 async function runAgentLoop(params: {
   client: Anthropic;
+  model: string;
   supabase: SupabaseServerClient;
   familyId: string;
   userId: string;
@@ -224,7 +228,7 @@ async function runAgentLoop(params: {
   mealPlan: PlanItem[];
   send: (event: MenuAgentEvent) => void;
 }) {
-  const { client, supabase, familyId, userId, messages, mealPlan, send } = params;
+  const { client, model, supabase, familyId, userId, messages, mealPlan, send } = params;
 
   const workingPlan: PlanItem[] = mealPlan.map((item) => ({ ...item }));
   const ideaMap = new Map<string, NewRecipeIdea>();
@@ -238,7 +242,7 @@ async function runAgentLoop(params: {
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const stopTimer = startTimer();
     const response = await client.messages.create({
-      model: "claude-opus-5",
+      model,
       max_tokens: 4096,
       system: buildSystemPrompt(workingPlan),
       messages: anthropicMessages,
@@ -250,7 +254,7 @@ async function runAgentLoop(params: {
       familyId,
       userId,
       feature: "menu_agent_loop",
-      model: "claude-opus-5",
+      model,
       usage: response.usage,
       durationMs: roundDurationMs,
     });

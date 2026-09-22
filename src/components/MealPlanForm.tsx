@@ -3,7 +3,6 @@
 import { useActionState, useMemo } from "react";
 import Link from "next/link";
 import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
-import { NewRecipeIdeaCard } from "@/components/NewRecipeIdeaCard";
 import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
 import { suggestMealPlan, type MealPlanState } from "@/app/menu-plan/actions";
 
@@ -93,9 +92,13 @@ export function MealPlanForm() {
                     genre={slot.slot.replace(/\d+$/, "")}
                   />
                 ) : (
-                  <ul>
-                    <NewRecipeIdeaCard idea={slot.idea} />
-                  </ul>
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm">
+                    <p className="font-medium text-gray-600">該当する登録済みレシピが見つかりませんでした</p>
+                    <p className="mt-1 text-gray-500">{slot.reason}</p>
+                    <p className="mt-2 text-xs text-gray-400">
+                      「新レシピ提案」でAIに考えてもらうか、先にレシピを登録してから再度お試しください。
+                    </p>
+                  </div>
                 )}
               </li>
             ))}
@@ -110,7 +113,7 @@ export function MealPlanForm() {
             </Link>
           ) : (
             <p className="text-sm text-gray-500">
-              未登録の品目があります。まず上のカードから登録すると、食材リストに含められます。
+              該当する登録済みレシピが見つかりませんでした。レシピを登録してから再度お試しください。
             </p>
           )}
         </div>

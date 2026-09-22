@@ -47,6 +47,17 @@ export default async function AdminPage() {
         </li>
         <li>
           <Link
+            href="/admin/ai-settings"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">AIモデル設定</p>
+            <p className="mt-1 text-sm text-gray-500">
+              献立提案・新レシピ提案・献立エージェントで使うAIモデルを切り替えられます。
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/admin/logs"
             className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
           >

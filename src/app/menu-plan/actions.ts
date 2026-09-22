@@ -6,31 +6,16 @@ import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
-import type { NewRecipeIdea, RecipePrefill } from "@/types/recipe-suggestion";
+import { getAiModelSettings, effortForModel } from "@/lib/ai-usage/model-settings";
+import { selectRecipesForPrompt } from "@/lib/recipes/prompt-context";
 
 const GENRE_ORDER = ["主食", "主菜", "副菜", "汁物"] as const;
-const DEFAULT_SERVINGS = 2;
-
-const NewRecipeSchema = z.object({
-  category: z.string().nullable(),
-  genre: z.string().nullable(),
-  servings: z.number().nullable(),
-  instructions: z.string().nullable(),
-  ingredients: z.array(
-    z.object({
-      name: z.string(),
-      quantity: z.number().nullable(),
-      unit: z.string().nullable(),
-    })
-  ),
-});
 
 const MealPlanSlotSchema = z.object({
   slot: z.string(),
-  title: z.string(),
+  title: z.string().nullable(),
   reason: z.string(),
   recipe_id: z.string().nullable(),
-  new_recipe: NewRecipeSchema.nullable(),
 });
 
 const MealPlanSchema = z.object({
@@ -40,7 +25,7 @@ const MealPlanSchema = z.object({
 
 export type MealPlanSlotResult =
   | { kind: "existing"; slot: string; title: string; reason: string; recipeId: string }
-  | { kind: "new"; slot: string; idea: NewRecipeIdea };
+  | { kind: "unmatched"; slot: string; reason: string };
 
 export type MealPlanResult = {
   planTitle: string;
@@ -58,6 +43,8 @@ type RegisteredRecipeRow = {
   category: string | null;
   genre: string | null;
   servings: number | null;
+  is_favorite: boolean;
+  created_at: string;
   recipe_ingredients: { ingredients_master: { name: string } | null }[];
 };
 
@@ -100,14 +87,20 @@ export async function suggestMealPlan(
   const supabase = await createClient();
   const { data: recipes, error } = await supabase
     .from("recipes")
-    .select("id, title, category, genre, servings, recipe_ingredients(ingredients_master(name))")
+    .select("id, title, category, genre, servings, is_favorite, created_at, recipe_ingredients(ingredients_master(name))")
+    .order("is_favorite", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<RegisteredRecipeRow[]>();
 
   if (error) {
     return { result: null, error: `レシピの取得に失敗しました: ${error.message}` };
   }
 
-  const recipeSummaries = (recipes ?? []).map((r) => ({
+  // 入力トークンがレシピ件数に比例して際限なく伸びないよう、品目ごとに
+  // 件数の上限まで絞り込む(お気に入り・新しい順に優先)。
+  const targetRecipes = selectRecipesForPrompt(recipes ?? []);
+
+  const recipeSummaries = targetRecipes.map((r) => ({
     id: r.id,
     title: r.title,
     category: r.category,
@@ -119,30 +112,31 @@ export async function suggestMealPlan(
   }));
 
   const client = createAnthropicClient();
+  const { menuPlanModel } = await getAiModelSettings(supabase);
 
   const systemPrompt = `あなたは家庭の献立提案アシスタントです。本日は${todayInJapanese()}です。
 ユーザーの条件をもとに、指定された品目(${slots.join(
     "・"
   )})それぞれに1品ずつ、一貫性のある「今日の献立」を1セットだけ提案してください。品目ラベルの先頭(主食/主菜/副菜/汁物)がその品目の種類を表し、同じ種類が複数指定されている場合は連番になっています。出力するslotsの各slotフィールドには、指定された品目ラベルをそのまま1つずつ使ってください。
 
-各品目について:
-- 登録済みレシピ一覧の中に適したものがあれば、それを選び recipe_id にそのidを指定してください(new_recipeはnullにする)。
-- 適したものがなければ、あなたが新しいレシピ案を考案してください(recipe_idはnullにし、new_recipeに材料・手順を具体的に記入する)。新しいレシピ案の人数は、一般的な家庭向けの分量(${DEFAULT_SERVINGS}人前程度)を目安にしてください。実際の人数調整は後の工程で行います。
+各品目について、必ず「登録済みレシピ一覧」の中からのみ選んでください(新しいレシピを考案してはいけません)。
+- 適したものがあれば、それを選び recipe_id にそのidを、title にそのレシピのタイトルをそのまま指定してください。
+- 適したものが一覧の中に無い場合は、recipe_id と title を両方nullにし、reason に「該当する登録済みレシピが見つからなかった理由」を簡潔に書いてください。
 
 品目全体で栄養バランスや味付けの重複(同じ食材・同じ味付けばかりにならない)に配慮し、一貫性のある1セットの献立にしてください。`;
 
   const userPrompt = `【含めたい品目】${slots.join("、")}\n【条件】${
     request || "(特になし)"
-  }\n\n【登録済みレシピ一覧】\n${JSON.stringify(recipeSummaries)}`;
+  }\n\n【登録済みレシピ一覧(この中からのみ選ぶこと)】\n${JSON.stringify(recipeSummaries)}`;
 
   try {
     const stopTimer = startTimer();
     const response = await client.messages.parse({
-      model: "claude-opus-5",
-      max_tokens: 8000,
+      model: menuPlanModel,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      output_config: { format: zodOutputFormat(MealPlanSchema), effort: "medium" },
+      output_config: { format: zodOutputFormat(MealPlanSchema), effort: effortForModel(menuPlanModel) },
     });
     const durationMs = stopTimer();
 
@@ -153,7 +147,7 @@ export async function suggestMealPlan(
       familyId: await getCurrentFamilyId().catch(() => null),
       userId: user?.id ?? null,
       feature: "menu_plan",
-      model: "claude-opus-5",
+      model: menuPlanModel,
       usage: response.usage,
       durationMs,
     });
@@ -164,7 +158,7 @@ export async function suggestMealPlan(
     }
 
     const resultSlots: MealPlanSlotResult[] = parsed.slots.map((s) => {
-      if (s.recipe_id) {
+      if (s.recipe_id && s.title) {
         return {
           kind: "existing",
           slot: s.slot,
@@ -173,32 +167,7 @@ export async function suggestMealPlan(
           recipeId: s.recipe_id,
         };
       }
-
-      const newRecipe = s.new_recipe;
-      const recipe: RecipePrefill = {
-        title: s.title,
-        category: newRecipe?.category ?? null,
-        genre: newRecipe?.genre ?? s.slot,
-        servings: newRecipe?.servings ?? DEFAULT_SERVINGS,
-        instructions: newRecipe?.instructions ?? null,
-        memo: null,
-        recipe_url: null,
-      };
-
-      return {
-        kind: "new",
-        slot: s.slot,
-        idea: {
-          title: s.title,
-          reason: s.reason,
-          recipe,
-          ingredients: (newRecipe?.ingredients ?? []).map((ingredient) => ({
-            name: ingredient.name,
-            quantity: ingredient.quantity != null ? String(ingredient.quantity) : "",
-            unit: ingredient.unit ?? "",
-          })),
-        },
-      };
+      return { kind: "unmatched", slot: s.slot, reason: s.reason };
     });
 
     return { result: { planTitle: parsed.plan_title, slots: resultSlots }, error: null };

@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
+import { getAiModelSettings, effortForModel } from "@/lib/ai-usage/model-settings";
+import { selectRecipesForPrompt } from "@/lib/recipes/prompt-context";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 
 const NewIdeaIngredientSchema = z.object({
@@ -42,8 +44,8 @@ type RegisteredRecipeRow = {
   title: string;
   category: string | null;
   genre: string | null;
-  servings: number | null;
-  recipe_ingredients: { ingredients_master: { name: string } | null }[];
+  is_favorite: boolean;
+  created_at: string;
 };
 
 function todayInJapanese(): string {
@@ -67,23 +69,26 @@ export async function suggestRecipes(
   const supabase = await createClient();
   const { data: recipes, error } = await supabase
     .from("recipes")
-    .select("id, title, category, genre, servings, recipe_ingredients(ingredients_master(name))")
+    .select("id, title, category, genre, is_favorite, created_at")
+    .order("is_favorite", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<RegisteredRecipeRow[]>();
 
   if (error) {
     return { result: null, error: `レシピの取得に失敗しました: ${error.message}` };
   }
 
-  const recipeSummaries = (recipes ?? []).map((r) => ({
+  // 重複回避の判定にはタイトル・カテゴリ・ジャンルで十分なため、食材一覧は
+  // 送らない(1件あたりのトークン消費を抑える)。件数上限も併せて適用する。
+  const targetRecipes = selectRecipesForPrompt(recipes ?? []);
+  const recipeSummaries = targetRecipes.map((r) => ({
     title: r.title,
     category: r.category,
     genre: r.genre,
-    ingredients: r.recipe_ingredients
-      .map((ri) => ri.ingredients_master?.name)
-      .filter((name): name is string => Boolean(name)),
   }));
 
   const client = createAnthropicClient();
+  const { recipeSuggestionModel } = await getAiModelSettings(supabase);
 
   const systemPrompt = `あなたは家庭の新レシピ提案アシスタントです。本日は${todayInJapanese()}です。
 ユーザーの要望(気分・食べたいジャンル・手持ちの食材・季節など、自由な内容)に応じて、あなたが新しいレシピ案を複数考案してください。材料と手順を具体的に書くこと。
@@ -91,18 +96,21 @@ export async function suggestRecipes(
 
 季節や旬の食材について聞かれた場合は、日本の一般的な季節感(本日の日付)をもとに判断してください。`;
 
-  const userPrompt = `【ユーザーの要望】\n${request}\n\n【参考: 登録済みレシピ一覧(重複を避けるため)】\n${JSON.stringify(
+  const userPrompt = `【ユーザーの要望】\n${request}\n\n【参考: 登録済みレシピ一覧(重複を避けるため。タイトルとジャンルのみ)】\n${JSON.stringify(
     recipeSummaries
   )}`;
 
   try {
     const stopTimer = startTimer();
     const response = await client.messages.parse({
-      model: "claude-opus-5",
+      model: recipeSuggestionModel,
       max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
-      output_config: { format: zodOutputFormat(RecipeSuggestionSchema), effort: "medium" },
+      output_config: {
+        format: zodOutputFormat(RecipeSuggestionSchema),
+        effort: effortForModel(recipeSuggestionModel),
+      },
     });
     const durationMs = stopTimer();
 
@@ -113,7 +121,7 @@ export async function suggestRecipes(
       familyId: await getCurrentFamilyId().catch(() => null),
       userId: user?.id ?? null,
       feature: "recipe_suggestion",
-      model: "claude-opus-5",
+      model: recipeSuggestionModel,
       usage: response.usage,
       durationMs,
     });
