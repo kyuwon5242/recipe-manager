@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type Anthropic from "@anthropic-ai/sdk";
+import { revalidatePath } from "next/cache";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { requireMenuAgentAccess } from "@/lib/admin/current";
@@ -15,6 +16,8 @@ import { sortByCategoryOrder } from "@/lib/ingredients/categories";
 import { getFamilyDefaultItemsAsIngredients } from "@/lib/shopping/defaults";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 import { getAiModelSettings } from "@/lib/ai-usage/model-settings";
+import { getAiQuotaStatus, consumeAiQuota } from "@/lib/ai-usage/quota";
+import { estimateCostUsd } from "@/lib/ai-usage/pricing";
 import { logEvent } from "@/lib/logging/log";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 import {
@@ -84,6 +87,15 @@ export async function POST(req: Request) {
   }
 
   const supabase = admin.supabase;
+
+  const quota = await getAiQuotaStatus(supabase);
+  if (quota.remainingUsd <= 0) {
+    return new Response(
+      JSON.stringify({ error: "今週のAI利用上限に達しました。管理者にご連絡いただくか、リセットまでお待ちください。" }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const familyId = await getCurrentFamilyId();
   const client = createAnthropicClient();
   const { menuAgentModel } = await getAiModelSettings(supabase);
@@ -174,6 +186,11 @@ async function runGateCheck(
       usage: response.usage,
       durationMs: stopTimer(),
     });
+    await consumeAiQuota(
+      supabase,
+      estimateCostUsd("claude-haiku-4-5-20251001", response.usage.input_tokens, response.usage.output_tokens)
+    );
+    revalidatePath("/menu-agent");
     const parsed = response.parsed_output;
     if (!parsed) return { in_scope: true, redirect_message: null };
     return parsed;
@@ -258,6 +275,11 @@ async function runAgentLoop(params: {
       usage: response.usage,
       durationMs: roundDurationMs,
     });
+    await consumeAiQuota(
+      supabase,
+      estimateCostUsd(model, response.usage.input_tokens, response.usage.output_tokens)
+    );
+    revalidatePath("/menu-agent");
 
     const textParts: string[] = [];
     const toolUses: Anthropic.ToolUseBlock[] = [];

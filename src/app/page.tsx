@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { UsageScenarioBanner } from "@/components/UsageScenarioBanner";
 import { HelpPanel } from "@/components/HelpPanel";
+import { AiQuotaGauge } from "@/components/AiQuotaGauge";
+import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 import type { Zone } from "@/lib/zones";
 
 const HELP_ITEMS = [
@@ -53,6 +55,7 @@ export default async function HomePage() {
     .maybeSingle();
   const isAdmin = profile?.is_admin ?? false;
   const canUseMenuAgent = isAdmin || (profile?.can_use_menu_agent ?? false);
+  const quota = await getAiQuotaStatus(supabase);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -60,6 +63,7 @@ export default async function HomePage() {
         <h1 className="text-2xl font-bold">今日は何を作りますか?</h1>
         <HelpPanel title="ホーム" items={HELP_ITEMS} />
       </div>
+      <AiQuotaGauge status={quota} />
 
       <UsageScenarioBanner />
 

@@ -3,10 +3,21 @@ import { requireAdmin } from "@/lib/admin/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { AI_FEATURE_LABELS, type AiFeature } from "@/lib/ai-usage/log";
 import { estimateCostUsd } from "@/lib/ai-usage/pricing";
+import { AiQuotaLimitForm } from "@/components/AiQuotaLimitForm";
+import { ResetQuotaButton } from "@/components/ResetQuotaButton";
 
 export const metadata = { title: "AI利用量" };
 
 const LOG_LIMIT = 5000;
+
+type QuotaSettingsRow = { weekly_limit_usd: number };
+
+type QuotaRow = {
+  user_id: string;
+  period_start: string;
+  used_cost_usd: number;
+  profiles: { display_name: string | null; email: string | null } | null;
+};
 
 type LogRow = {
   feature: string;
@@ -52,6 +63,19 @@ export default async function AiUsagePage() {
   if (error) {
     throw new Error(`利用ログの取得に失敗しました: ${error.message}`);
   }
+
+  const { data: quotaSettings } = await supabase
+    .from("ai_quota_settings")
+    .select("weekly_limit_usd")
+    .eq("id", true)
+    .maybeSingle<QuotaSettingsRow>();
+  const weeklyLimitUsd = quotaSettings?.weekly_limit_usd ?? 2.0;
+
+  const { data: quotaRows } = await supabase
+    .from("ai_usage_quota")
+    .select("user_id, period_start, used_cost_usd, profiles(display_name, email)")
+    .order("used_cost_usd", { ascending: false })
+    .returns<QuotaRow[]>();
 
   const rows = logs ?? [];
 
@@ -123,6 +147,42 @@ export default async function AiUsagePage() {
           <p className="text-xs text-gray-500">出力トークン合計</p>
           <p className="mt-1 text-lg font-bold">{totalOutput.toLocaleString()}</p>
         </div>
+      </div>
+
+      <h2 className="mt-6 font-semibold">ユーザー別AI利用上限</h2>
+      <p className="mt-1 text-xs text-gray-400">
+        全ユーザー共通の週間上限(概算USD、管理者自身も含む)。最後の利用から7日経過すると次回アクセス時に自動リセットされます。管理者は自分自身を含め、上限に達したユーザーをいつでも復活させられます。
+      </p>
+      <AiQuotaLimitForm weeklyLimitUsd={weeklyLimitUsd} />
+      <div className="mt-3 space-y-2">
+        {(quotaRows ?? []).length === 0 ? (
+          <p className="text-sm text-gray-400">まだ利用記録がありません。</p>
+        ) : (
+          (quotaRows ?? []).map((q) => {
+            const name = q.profiles?.display_name ?? q.profiles?.email ?? "(不明なユーザー)";
+            const exhausted = q.used_cost_usd >= weeklyLimitUsd;
+            const resetAt = new Intl.DateTimeFormat("ja-JP", {
+              timeZone: "Asia/Tokyo",
+              month: "numeric",
+              day: "numeric",
+            }).format(new Date(new Date(q.period_start).getTime() + 7 * 24 * 60 * 60 * 1000));
+            return (
+              <div
+                key={q.user_id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3 text-sm"
+              >
+                <div>
+                  <span className="font-medium">{name}</span>
+                  <span className={`ml-2 text-xs ${exhausted ? "text-red-600" : "text-gray-400"}`}>
+                    ${q.used_cost_usd.toFixed(3)} / ${weeklyLimitUsd.toFixed(2)}(
+                    {resetAt}にリセット)
+                  </span>
+                </div>
+                {exhausted ? <ResetQuotaButton userId={q.user_id} userName={name} /> : null}
+              </div>
+            );
+          })
+        )}
       </div>
 
       <h2 className="mt-6 font-semibold">ユーザー別内訳(コストの高い順)</h2>

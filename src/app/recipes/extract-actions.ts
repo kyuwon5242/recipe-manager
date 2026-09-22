@@ -2,10 +2,13 @@
 
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { revalidatePath } from "next/cache";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
+import { getAiQuotaStatus, consumeAiQuota } from "@/lib/ai-usage/quota";
+import { estimateCostUsd } from "@/lib/ai-usage/pricing";
 
 const ExtractedIngredientSchema = z.object({
   name: z.string(),
@@ -113,6 +116,15 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
     return { ok: false, error: "このURLは指定できません" };
   }
 
+  const supabase = await createClient();
+  const quota = await getAiQuotaStatus(supabase);
+  if (quota.remainingUsd <= 0) {
+    return {
+      ok: false,
+      error: "今週のAI利用上限に達しました。管理者にご連絡いただくか、リセットまでお待ちください。",
+    };
+  }
+
   let html: string;
   try {
     const res = await fetch(parsed.toString(), {
@@ -155,7 +167,6 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
     });
     parsedOutput = response.parsed_output;
 
-    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -167,6 +178,11 @@ export async function extractRecipeFromUrl(url: string): Promise<ExtractRecipeRe
       usage: response.usage,
       durationMs: stopTimer(),
     });
+    await consumeAiQuota(
+      supabase,
+      estimateCostUsd("claude-haiku-4-5-20251001", response.usage.input_tokens, response.usage.output_tokens)
+    );
+    revalidatePath("/recipes/new");
   } catch (err) {
     const message = err instanceof Error ? err.message : "不明なエラー";
     return { ok: false, error: `レシピ情報の解析に失敗しました: ${message}` };

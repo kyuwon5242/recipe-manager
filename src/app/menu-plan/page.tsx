@@ -2,6 +2,9 @@ import { MealPlanForm } from "@/components/MealPlanForm";
 import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
+import { AiQuotaGauge } from "@/components/AiQuotaGauge";
+import { createClient } from "@/lib/supabase/server";
+import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
 export const metadata = { title: "献立提案" };
 
@@ -17,7 +20,10 @@ const HELP_ITEMS = [
   { label: "気に入ったら", desc: "提案された献立は献立トレイに追加できます。" },
 ];
 
-export default function MenuPlanPage() {
+export default async function MenuPlanPage() {
+  const supabase = await createClient();
+  const quota = await getAiQuotaStatus(supabase);
+
   return (
     <WithMealPlanTray>
       <div className="flex items-center gap-2">
@@ -28,6 +34,7 @@ export default function MenuPlanPage() {
       <p className="mt-2 text-sm text-gray-500">
         含めたい品目(主食・主菜・副菜・汁物)の品数と条件を入力すると、登録済みレシピの中から組み合わせた献立を1セット提案します。気に入ったものは献立トレイに追加できます。
       </p>
+      <AiQuotaGauge status={quota} />
       <MealPlanForm />
     </WithMealPlanTray>
   );

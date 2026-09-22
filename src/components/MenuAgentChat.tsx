@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { registerRecipeIdea } from "@/app/recipes/actions";
 import {
   createShoppingList,
@@ -93,6 +94,7 @@ function sortPlanBySlot(items: PlanItem[]): PlanItem[] {
 }
 
 export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
+  const router = useRouter();
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const [latestShoppingDraft, setLatestShoppingDraft] = useState<ShoppingDraftItem[] | null>(null);
@@ -223,6 +225,8 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
       setError(message);
     } finally {
       setIsSending(false);
+      // AI利用上限のゲージ(サーバーコンポーネント)を最新化する。
+      router.refresh();
     }
   }
 

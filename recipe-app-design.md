@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-22(フェーズ18時点)
+最終更新: 2026-09-22(フェーズ19時点)
 
 ---
 
@@ -138,6 +138,7 @@
 | ADMIN-5 | 食材マスタの表記ゆれ・カテゴリ誤りをAIで一括整理する(未分類・旧タクソノミーを対象にした増分処理) | 管理者 | `/ingredients` |
 | ADMIN-6 | ユーザー別・機能別のAI利用トークン数と概算コスト(ドル)を確認する | 管理者 | `/admin/ai-usage` |
 | ADMIN-7 | エラー・警告・処理時間(遅延)のログをレベル別に確認する | 管理者 | `/admin/logs` |
+| ADMIN-8 | ユーザー別AI利用上限の週間上限額を変更する、上限に達したユーザー(自分自身を含む)を個別に復活(リセット)させる | 管理者 | `/admin/ai-usage` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -211,10 +212,13 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `family_default_items` | `id`(PK), `family_id`(→families), `name`, `quantity`, `unit`, `category`, `position`, `created_at` | 家族の「どの買い物でも必ず含める食材」 |
 | `ai_usage_logs` | `id`(PK), `family_id`(→families, null可), `user_id`(→profiles, null可), `feature`, `model`, `input_tokens`, `output_tokens`, `duration_ms`, `created_at` | AI呼び出しごとの利用量記録。閲覧は管理者限定 |
 | `app_logs` | `id`(PK), `level`(info/warn/error), `event`, `message`, `path`, `user_id`(→profiles, null可), `family_id`(→families, null可), `duration_ms`, `metadata`(jsonb), `created_at` | アプリ全体のトレース・エラー・処理時間ログ。閲覧は管理者限定 |
+| `ai_model_settings` | `id`(PK, boolean固定でシングルトン), `menu_plan_model`, `recipe_suggestion_model`, `menu_agent_model`, `updated_at`, `updated_by` | 機能ごとに使うAIモデル(Opus 5/Haiku 4.5)のアプリ全体設定。閲覧は全ユーザー、変更は管理者限定 |
+| `ai_quota_settings` | `id`(PK, boolean固定でシングルトン), `weekly_limit_usd`, `updated_at`, `updated_by` | ユーザー別AI利用上限の週間上限額(概算USD、全ユーザー共通)。閲覧は全ユーザー、変更は管理者限定 |
+| `ai_usage_quota` | `user_id`(PK, →profiles), `period_start`, `used_cost_usd`, `updated_at` | ユーザーごとの当該週のAI利用額。直接の読み書きはRPC(`check_ai_quota`/`consume_ai_quota`)経由。閲覧は本人と管理者のみ |
 
-主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)。
+主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0008_fix_admin_bootstrap_trigger.sql`(詳細は5〜14章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0016_ai_quota_admin_included.sql`(詳細は5〜19章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 
@@ -253,6 +257,7 @@ AIモデルの使い分け方針(フェーズ9で整理、フェーズ18で新�
 - UI/UXブランディング(コック帽アイコン、オレンジ/コーラル配色、AI処理中アニメーション、ボタン押下フィードバック)
 - ゾーン別カラーコーディング(機能ごとに色分けしたアイコン・ナビ現在地表示)、生成り色の背景、コンテンツが浮き上がるシャドウ
 - 献立エージェント(利用許可制・実験機能。会話しながら献立を決め、買い物リスト作成まで誘導するツール呼び出しエージェント。管理者は個別のユーザーに利用権限を付与できる)
+- ユーザー別AI利用上限(全ユーザー共通の週間上限額。管理者自身を含む全ユーザーが対象で、新レシピ提案・献立提案・レシピURL自動抽出・献立エージェントの利用ごとに消費し、トップページ・各AI機能画面に残量ゲージを表示。7日経過で自動リセット、管理者は`/admin/ai-usage`から上限額の変更と、自分自身を含む個別ユーザーの復活〈即時リセット〉が可能)
 - デプロイバージョンの表示・強制再ログイン(デプロイ後、旧バージョンのクライアントで操作を続けさせない)
 - 買い物リストの上書き保存(件数上限に達した場合)、作成・更新日時の表示
 - 家族ごとの「どの買い物でも必ず含める食材」設定
@@ -1061,3 +1066,45 @@ Vercel無料プランのRuntime Logsは保持期間が短い(1時間)ため、�
 - **献立提案を「登録済みレシピの中からのみ組み立てる」方式に変更**: 従来は該当レシピが無い品目についてAIが新しいレシピを考案していた(`new_recipe`)が、この経路を廃止した。該当が無い品目は`recipe_id`をnullにして理由を返すのみとし、画面側(`MealPlanForm`)は「該当する登録済みレシピが見つかりませんでした」という案内カードを表示する(新レシピ提案の利用や、先にレシピを登録することを促す文言つき)。あわせて`/menu-plan`のヘルプ・説明文から「AIが新しいレシピ案を考えます」という記述を削除した。出力トークンの主要な変動要因(新規レシピの考案)自体を無くしたことで、コストの予測可能性も上がった。
 
 **手動対応が必要な作業**: `supabase/migrations/0014_ai_model_settings.sql`をSupabase SQL Editorで実行するまでは、`ai_model_settings`テーブルが存在せずモデル設定は常にOpus 5にフォールバックする(エラーにはならない)。
+
+## 25. AI利用予算の再試算とユーザー別AI利用上限機能(フェーズ19)
+
+フェーズ18のトークン削減対応(品目ごとの送信件数上限、新レシピ提案の送信情報削減)を踏まえて、AI利用予算・キャパシティ試算を実測ベースで再実施した。あわせて、その結果をもとにバックログの「AIの利用量に応じて、ユーザーごとに上限トークン数を決めて機能利用を制限したい」に着手した。
+
+### 25.1 ベンチマーク再測定
+
+管理者限定の一時的なAPIルート(`src/app/api/bench-test/route.ts`、作業後に削除済み・リポジトリには残っていない)で、実際の家族データ(登録レシピ79件、フェーズ18の`RECIPES_PER_GENRE_LIMIT=20`が既に効き始める規模)から**レシピ件数10/25/50件**を切り出し、新レシピ提案・献立提案それぞれをOpus 5で実行して`ai_usage_logs`に実記録を残した。件数50指定時は品目ごとの上限により実際にプロンプトへ渡ったのは49件で、上限が実際に効いていることも確認できた。
+
+実測結果(Opus 5、$/100万トークン: 入力5・出力25で算出):
+
+| 機能 | 件数10 | 件数25 | 件数50(実質49) |
+|---|---|---|---|
+| 新レシピ提案 | $0.087 | $0.081 | $0.089 |
+| 献立提案 | $0.037 | $0.045 | $0.067 |
+
+- **新レシピ提案**: 入力トークンはレシピ件数に比例して増えるが、フェーズ18で食材一覧・人数の送信をやめた結果、増加ペースは約42トークン/件(旧126トークン/件から大幅減)。出力トークンは件数に関係なく2,850〜3,200程度で安定しており、コストの主因は出力側。
+- **献立提案**: 各レシピの材料一覧を送る仕様は変わっていないため、入力は約160トークン/件で増加(旧155.5トークン/件とほぼ同じ)。ただしフェーズ18で新規レシピ考案の経路を廃止したため出力トークンが826〜969程度で安定し、件数が増えても出力側が膨らむことはなくなった。
+- 品目ごとの上限(最大20件×5ジャンル=最大100件相当)まで件数が増えた場合の上限コストを外挿すると、新レシピ提案は約$0.10/回、献立提案は約$0.11/回程度に収まる見込み。
+- レシピURL自動抽出(Haiku 4.5固定、レシピ件数と無関係)・献立エージェント(門番判定+本体1往復)は、今回のベンチマーク対象外とし、既存の実利用ログ(それぞれ平均約$0.009/回、約$0.001+$0.016/往復)を参考値として採用した。
+
+### 25.2 週間利用上限額の決定
+
+「典型的な週間利用パターン」を、新レシピ提案5回・献立提案4回・レシピURL自動抽出3回・献立エージェント1セッション(門番+ループ4往復想定)と仮定すると、1ユーザーあたりの週間実費想定は次の通り:
+
+```
+5×$0.089 + 4×$0.067 + 3×$0.009 + 1×($0.001+$0.016×4) ≈ $0.81/週
+```
+
+この想定に対して約2.5倍の余裕を持たせ、通常利用を妨げず異常な連続利用(バグや誤操作による繰り返し呼び出し)だけを防ぐ水準として、**週間上限額を$2.00/ユーザー**に設定した(`ai_quota_settings.weekly_limit_usd`のデフォルト値。管理者が`/admin/ai-usage`からいつでも変更可能)。
+
+### 25.3 ユーザー別AI利用上限機能の実装
+
+- 新規テーブル`ai_quota_settings`(シングルトン、週間上限額)・`ai_usage_quota`(ユーザーごとの当該週の利用額)を追加(`supabase/migrations/0015_ai_usage_quota.sql`)。
+- SECURITY DEFINERのRPC3つを追加: `check_ai_quota()`(現在の利用状況を取得。7日経過していれば自動リセット)、`consume_ai_quota(p_cost)`(AI呼び出し後にコストを加算)、`admin_reset_ai_quota(p_user_id)`(管理者が指定ユーザーを即座に復活させる)。いずれも`auth.uid()`を内部で使い、引数でuser_idを受け取らない設計(なりすまし防止、`create_family()`等と同じパターン)。
+- 当初は管理者を上限の対象外(常に無制限)としていたが、実際の動作確認を管理者アカウントでも行えるようにしたいという要望を受け、`supabase/migrations/0016_ai_quota_admin_included.sql`で方針を変更した。管理者も他ユーザーと同じようにゲージを消費し、上限に達した場合は`/admin/ai-usage`から自分自身を含めて即座に復活(リセット)できる(利用停止・献立エージェント利用許可などとは異なり、自己完結できるため「管理者は常に無制限」にする必要が無いと判断)。
+- 上限の対象は、ユーザーが能動的に使うAI機能(新レシピ提案・献立提案・レシピURL自動抽出・献立エージェント)のみ。レシピ保存時に自動で動く食材名解決と、管理者専用の食材マスタ一括整理は対象外(前者を止めるとレシピ保存自体ができなくなるため)。
+- `src/lib/ai-usage/quota.ts`に`getAiQuotaStatus()`/`consumeAiQuota()`を追加。各AI呼び出し箇所(`recipe-suggestions/actions.ts`・`menu-plan/actions.ts`・`recipes/extract-actions.ts`・`api/menu-agent/route.ts`)で、呼び出し前に残量を確認して0以下ならブロック、呼び出し後に実コストを加算する。マイグレーション未適用時・エラー時は無制限にフォールバックし既存の挙動を壊さない(`ai_model_settings`と同じ方針)。
+- トップページ・新レシピ提案・献立提案・レシピ登録(URL自動入力欄)・献立エージェントの各画面に、残量ゲージ(`src/components/AiQuotaGauge.tsx`)を表示。管理者には代わりに「上限の対象外」バッジを表示する。
+- `/admin/ai-usage`に「ユーザー別AI利用上限」セクションを追加。週間上限額の変更フォームと、ユーザーごとの利用額・次回リセット日時の一覧、上限に達したユーザー向けの「復活させる」ボタン(即時リセット)を表示する。
+
+**手動対応が必要な作業**: `supabase/migrations/0015_ai_usage_quota.sql`と`0016_ai_quota_admin_included.sql`をSupabase SQL Editorで実行するまでは、`ai_quota_settings`/`ai_usage_quota`テーブルおよび関連RPCが存在しない(0015未実行時)か、管理者が上限の対象外のまま(0016未実行時)になる。いずれの場合もエラーにはならず、未実行の項目はフォールバック(無制限)で動作する。

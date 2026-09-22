@@ -2,6 +2,9 @@ import { RecipeSuggestionForm } from "@/components/RecipeSuggestionForm";
 import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
+import { AiQuotaGauge } from "@/components/AiQuotaGauge";
+import { createClient } from "@/lib/supabase/server";
+import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
 export const metadata = { title: "新レシピ提案" };
 
@@ -13,7 +16,10 @@ const HELP_ITEMS = [
   { label: "気に入ったら", desc: "提案されたレシピは献立トレイに追加したり、そのまま登録できます。" },
 ];
 
-export default function RecipeSuggestionsPage() {
+export default async function RecipeSuggestionsPage() {
+  const supabase = await createClient();
+  const quota = await getAiQuotaStatus(supabase);
+
   return (
     <WithMealPlanTray>
       <div className="flex items-center gap-2">
@@ -24,6 +30,7 @@ export default function RecipeSuggestionsPage() {
       <p className="mt-2 text-sm text-gray-500">
         気分・食べたいジャンル・手持ちの食材・季節感など、自由に入力してください。AIが新しいレシピ案を考えます。案は献立トレイに追加できます。
       </p>
+      <AiQuotaGauge status={quota} />
       <RecipeSuggestionForm />
     </WithMealPlanTray>
   );

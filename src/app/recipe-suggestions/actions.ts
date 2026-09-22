@@ -2,11 +2,14 @@
 
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAnthropicClient } from "@/lib/anthropic/client";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { logAiUsage, startTimer } from "@/lib/ai-usage/log";
 import { getAiModelSettings, effortForModel } from "@/lib/ai-usage/model-settings";
+import { getAiQuotaStatus, consumeAiQuota } from "@/lib/ai-usage/quota";
+import { estimateCostUsd } from "@/lib/ai-usage/pricing";
 import { selectRecipesForPrompt } from "@/lib/recipes/prompt-context";
 import type { NewRecipeIdea } from "@/types/recipe-suggestion";
 
@@ -67,6 +70,15 @@ export async function suggestRecipes(
   }
 
   const supabase = await createClient();
+
+  const quota = await getAiQuotaStatus(supabase);
+  if (quota.remainingUsd <= 0) {
+    return {
+      result: null,
+      error: "今週のAI利用上限に達しました。管理者にご連絡いただくか、リセットまでお待ちください。",
+    };
+  }
+
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select("id, title, category, genre, is_favorite, created_at")
@@ -125,6 +137,11 @@ export async function suggestRecipes(
       usage: response.usage,
       durationMs,
     });
+    await consumeAiQuota(
+      supabase,
+      estimateCostUsd(recipeSuggestionModel, response.usage.input_tokens, response.usage.output_tokens)
+    );
+    revalidatePath("/recipe-suggestions");
 
     const parsed = response.parsed_output;
     if (!parsed) {
