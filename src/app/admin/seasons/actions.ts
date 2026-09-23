@@ -95,15 +95,20 @@ export async function generateSeasonMonths(
       return { result: null, error: `AIによる旬データ生成に失敗しました: ${message}` };
     }
 
-    for (const item of items) {
-      const target = targetByName.get(item.name);
-      if (!target) continue;
+    // 1件ずつawaitして更新すると件数分の往復が発生し数十〜百秒規模になるため、
+    // チャンク単位でまとめてupsertする(Vercelの関数タイムアウト対策も兼ねる)。
+    const rowsToUpdate = items
+      .map((item) => {
+        const target = targetByName.get(item.name);
+        return target ? { id: target.id, season_months: item.season_months } : null;
+      })
+      .filter((row): row is { id: string; season_months: number[] } => row !== null);
 
+    if (rowsToUpdate.length > 0) {
       const { error: updateError } = await supabase
         .from("ingredients_master")
-        .update({ season_months: item.season_months })
-        .eq("id", target.id);
-      if (!updateError) assignedCount++;
+        .upsert(rowsToUpdate, { onConflict: "id" });
+      if (!updateError) assignedCount += rowsToUpdate.length;
     }
   }
 

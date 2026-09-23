@@ -26,10 +26,3 @@ export function monthsLabel(months: number[] | null): string {
     .map((m) => `${m}月`)
     .join("・");
 }
-
-// カード画像は public/cards/ 配下に静的ファイルとして配置する想定
-// (game-design.md 8章参照)。未設定の場合はプレースホルダーを表示する。
-export function cardImageSrc(illustrationUrl: string | null): string | null {
-  if (!illustrationUrl) return null;
-  return `/cards/${illustrationUrl}`;
-}

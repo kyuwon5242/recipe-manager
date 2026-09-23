@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { categoryIcon, sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_STYLES, monthsLabel, cardImageSrc, type CardRarity } from "@/lib/game/cards";
+import { RARITY_STYLES, monthsLabel, type CardRarity } from "@/lib/game/cards";
+import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 export const metadata = { title: "食材図鑑" };
 
@@ -73,7 +74,7 @@ export default async function GameCardsPage() {
               {list.map((item) => {
                 const isOwned = item.ownedCount > 0;
                 const style = RARITY_STYLES[item.rarity];
-                const src = cardImageSrc(item.illustrationUrl);
+                const src = isOwned ? resolveCardImageSrc(item.illustrationUrl) : null;
                 return (
                   <Link
                     key={item.id}

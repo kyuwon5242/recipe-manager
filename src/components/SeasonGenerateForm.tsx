@@ -1,12 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { generateSeasonMonths, type GenerateSeasonsState } from "@/app/admin/seasons/actions";
 
 const initialState: GenerateSeasonsState = { result: null, error: null };
 
 export function SeasonGenerateForm() {
   const [state, formAction, isPending] = useActionState(generateSeasonMonths, initialState);
+
+  // 下の一覧(SeasonEditRow)はページ読み込み時の値をローカルstateで保持しているため、
+  // 生成直後にAIの結果を確認できるよう、成功時はページを再読み込みして最新値を反映する。
+  useEffect(() => {
+    if (state.result && state.result.assignedCount > 0) {
+      window.location.reload();
+    }
+  }, [state.result]);
 
   return (
     <div className="space-y-4">

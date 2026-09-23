@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { categoryIcon, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_LABELS, RARITY_STYLES, monthsLabel, cardImageSrc, type CardRarity } from "@/lib/game/cards";
+import { RARITY_LABELS, RARITY_STYLES, monthsLabel, type CardRarity } from "@/lib/game/cards";
+import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 type CardRow = {
   id: string;
@@ -60,7 +61,7 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
   }
 
   const style = RARITY_STYLES[card.rarity];
-  const src = cardImageSrc(card.illustration_url);
+  const src = isOwned ? resolveCardImageSrc(card.illustration_url) : null;
   const category = card.ingredients_master?.category ?? UNCATEGORIZED_LABEL;
 
   return (
