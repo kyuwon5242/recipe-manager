@@ -78,6 +78,28 @@ export default async function AdminPage() {
             </p>
           </Link>
         </li>
+        <li>
+          <Link
+            href="/admin/seasons"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">🃏 旬データの整備(ゲーム要素)</p>
+            <p className="mt-1 text-sm text-gray-500">
+              食材マスタにAIで旬の月を一括生成・確認・修正できます。
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/admin/game-cards"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">🃏 カード管理(ゲーム要素)</p>
+            <p className="mt-1 text-sm text-gray-500">
+              食材図鑑のカード(レアリティ・豆知識・イラスト)を作成・管理できます。
+            </p>
+          </Link>
+        </li>
       </ul>
     </div>
   );

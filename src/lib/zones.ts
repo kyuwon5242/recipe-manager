@@ -7,6 +7,7 @@ export const ZONES = {
   ai: { icon: "✨", bg: "bg-violet-100", text: "text-violet-700", label: "AIにレシピ・献立を考えてもらう" },
   shopping: { icon: "🛒", bg: "bg-green-100", text: "text-green-700", label: "食材リスト・買い物リスト" },
   family: { icon: "👪", bg: "bg-teal-100", text: "text-teal-700", label: "家族の招待・メンバー管理" },
+  game: { icon: "🃏", bg: "bg-rose-100", text: "text-rose-700", label: "食材図鑑・ゲーム要素" },
   admin: { icon: "🛡️", bg: "bg-slate-200", text: "text-slate-700", label: "管理者専用の機能" },
 } as const;
 

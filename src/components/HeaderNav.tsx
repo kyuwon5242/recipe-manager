@@ -35,6 +35,12 @@ const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title
     zone: "shopping",
     title: "確定した買い物リストを家族と共有・チェックする",
   },
+  {
+    href: "/game",
+    label: "食材図鑑",
+    zone: "game",
+    title: "旬の食材カードを集めて、家族の図鑑を育てる",
+  },
 ];
 
 function pillClass(active: boolean, zone: Zone): string {

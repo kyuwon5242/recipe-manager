@@ -55,6 +55,7 @@ const CARDS: HomeCard[] = [
   { href: "/shopping-list", zone: "shopping", icon: "📝", title: "食材リストを作成", desc: "献立から必要な食材を洗い出す" },
   { href: "/shopping-lists", zone: "shopping", title: "買い物リスト", desc: "確定リストを家族と共有・チェック" },
   { href: "/family", zone: "family", title: "家族設定", desc: "招待コード・メンバー管理" },
+  { href: "/game", zone: "game", icon: "🃏", title: "食材図鑑", desc: "旬の食材カードを集めて家族の図鑑を育てる" },
 ];
 
 export default async function HomePage() {
