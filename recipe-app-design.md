@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-23(フェーズ22時点)
+最終更新: 2026-09-23(フェーズ23時点)
 
 ---
 
@@ -141,6 +141,16 @@
 | ADMIN-7 | エラー・警告・処理時間(遅延)のログをレベル別に確認する | 管理者 | `/admin/logs` |
 | ADMIN-8 | ユーザー別AI利用上限の週間上限額を変更する、上限に達したユーザー(自分自身を含む)を個別に復活(リセット)させる | 管理者 | `/admin/ai-usage` |
 | ADMIN-9 | ユーザーごとに新レシピ提案・献立提案・レシピURL自動抽出の利用可否を切り替える(管理者自身は常に利用可) | 管理者 | `/admin/users` |
+| ADMIN-10 | 食材マスタにAIで「旬の月」を一括生成し、内容を確認・修正する(ゲーム要素のガチャ確率調整用) | 管理者 | `/admin/seasons` |
+| ADMIN-11 | 食材ごとに図鑑カード(レアリティ・豆知識・イラストファイル名・栄養素メモ)を作成・削除する | 管理者 | `/admin/game-cards` |
+
+#### ゲーム要素(食育×カード収集。フェーズ23時点はフェーズA=図鑑閲覧基盤のみ。ガチャ・クイズ・料理作成は未実装)
+
+| ID | ユースケース | アクター | 画面/機能 |
+|---|---|---|---|
+| GAME-1 | 家族の図鑑(所持カード)の進み具合を確認する | 家族メンバー/オーナー | `/game` |
+| GAME-2 | 食材カードの図鑑一覧を見る(未入手カードはカテゴリアイコンのプレースホルダー表示) | 家族メンバー/オーナー | `/game/cards` |
+| GAME-3 | 入手済みカードの詳細(旬・豆知識・栄養素・最初の入手者)を確認する | 家族メンバー/オーナー | `/game/cards/[id]` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -192,12 +202,17 @@ ADMIN-2/3(問題のあるユーザーを確認・利用停止) → ADMIN-5(食�
 | `/family` | 家族設定(招待コード、メンバー一覧、名称変更) | 要ログイン |
 | `/menu-agent` | 献立エージェント(会話形式で献立決め〜買い物リスト作成、実験機能) | 要利用許可(管理者、または管理者が個別許可したユーザー) |
 | `/api/menu-agent` | 献立エージェントのAPI(Route Handler、NDJSONストリーミング) | 要利用許可(同上) |
+| `/game` | ゲーム要素ハブ(図鑑の進み具合。フェーズAのためガチャ・クイズ・料理作成はまだ無い) | 要ログイン |
+| `/game/cards` | 食材図鑑一覧(未入手はプレースホルダー表示) | 要ログイン |
+| `/game/cards/[id]` | 食材カード詳細(入手済みのみ旬・豆知識・栄養素・入手者を表示) | 要ログイン |
 | `/ingredients` | 食材マスタの表記ゆれ・カテゴリ整理 | 要管理者 |
 | `/admin` | 管理者ダッシュボード | 要管理者 |
 | `/admin/recipes` | 全家族のレシピ一覧(横断参照・編集) | 要管理者 |
 | `/admin/users` | 全ユーザー一覧(表示名編集・利用停止) | 要管理者 |
 | `/admin/ai-usage` | AI利用量(ユーザー別・機能別のトークン数・概算コスト) | 要管理者 |
 | `/admin/logs` | アプリログ(トレース・エラー・処理時間) | 要管理者 |
+| `/admin/seasons` | 食材マスタの「旬の月」をAIで一括生成・確認・修正(ゲーム要素) | 要管理者 |
+| `/admin/game-cards` | 食材図鑑カードの作成・削除(ゲーム要素) | 要管理者 |
 
 ## C. データベース仕様(現在のスキーマ)
 
@@ -209,7 +224,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `families` | `id`(PK), `name`, `invite_code`(unique), `owner_id`(→profiles), `created_at` | 家族。作成・招待参加はRPC(`create_family`/`join_family_with_code`)経由 |
 | `family_members` | `family_id`+`user_id`(複合PK), `role`(owner/member), `joined_at` | 家族の所属関係 |
 | `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ(フェーズ16で`photo_url`列を廃止) |
-| `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照) |
+| `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `season_months`(integer[], null可), `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照)。`season_months`はゲーム要素のガチャ確率調整用(フェーズ23、`/admin/seasons`でAI一括生成・手動修正) |
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
 | `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
@@ -221,10 +236,13 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `ai_model_settings` | `id`(PK, boolean固定でシングルトン), `menu_plan_model`, `recipe_suggestion_model`, `menu_agent_model`, `updated_at`, `updated_by` | 機能ごとに使うAIモデル(Opus 5/Haiku 4.5)のアプリ全体設定。閲覧は全ユーザー、変更は管理者限定 |
 | `ai_quota_settings` | `id`(PK, boolean固定でシングルトン), `weekly_limit_usd`, `updated_at`, `updated_by` | ユーザー別AI利用上限の週間上限額(概算USD、全ユーザー共通)。閲覧は全ユーザー、変更は管理者限定 |
 | `ai_usage_quota` | `user_id`(PK, →profiles), `period_start`, `used_cost_usd`, `updated_at` | ユーザーごとの当該週のAI利用額。直接の読み書きはRPC(`check_ai_quota`/`consume_ai_quota`)経由。閲覧は本人と管理者のみ |
+| `game_cards` | `id`(PK), `ingredient_id`(→ingredients_master, unique), `rarity`(normal/rare/super_rare/legendary), `illustration_url`, `trivia_kids_text`, `trivia_adult_text`, `nutrition_summary`, `created_at` | ゲーム要素のカードマスタ(教育コンテンツ)。`/admin/game-cards`で管理者が手動作成。閲覧は全ユーザー、作成・編集・削除は管理者限定 |
+| `family_cards` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `owned_count`, `first_acquired_by`(→profiles, null可), `first_acquired_at`(null可) | 家族単位の図鑑(所持カード)。family_id+card_idでunique。フェーズ23時点はガチャ未実装のため常に空 |
+| `card_acquisitions` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `acquired_by`(→profiles), `acquired_at` | カード入手履歴(誰が・いつ入手したか)。フェーズ23時点はガチャ未実装のため常に空 |
 
 主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0018_shopping_list_recipes.sql`(詳細は5〜27章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0019_game_phase_a.sql`(詳細は5〜29章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 
@@ -271,6 +289,7 @@ AIモデルの使い分け方針(フェーズ9で整理、フェーズ18で新�
 - 買い物リストの上書き保存(件数上限に達した場合)、作成・更新日時の表示
 - 家族ごとの「どの買い物でも必ず含める食材」設定
 - 家族ごとの「よく使うスーパー」設定(食材カテゴリの並び順を保存し、買い物リスト作成時に選択できる)
+- ゲーム要素・食材図鑑(食育×ゲームで大人も子供も楽しく学べることが目的。設計はgame-design.md参照。フェーズ23時点は図鑑閲覧基盤のみ実装〈`/game`〉。ガチャ・クイズ・料理作成・家族ランクは後続フェーズ)
 
 
 ---

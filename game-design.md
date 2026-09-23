@@ -156,7 +156,7 @@ RLSは既存パターン踏襲(`is_family_member()`で家族内のみ閲覧・�
 
 | フェーズ案 | 内容 | 規模目安 |
 |---|---|---|
-| A(**実装済み・マイグレーション適用済み・動作確認待ち**) | 旬データ整備(`season_months`追加・AI一括生成)、`game_cards`/`family_cards`/`card_acquisitions`テーブル、図鑑閲覧のみ(ガチャなし、初期カードは管理者が手動投入) | 2〜3 |
+| A(**完了・実機確認済み**) | 旬データ整備(`season_months`追加・AI一括生成)、`game_cards`/`family_cards`/`card_acquisitions`テーブル、図鑑閲覧のみ(ガチャなし、初期カードは管理者が手動投入) | 2〜3 |
 | B | ガチャ本体(家族単位1日3枚+クイズボーナス、旬による確率調整、`family_game_profile`) | 2〜3 |
 | C | クイズ機能(`quiz_questions`/`quiz_attempts`、正解時のガチャ優遇連携) | 2〜3 |
 | D | 料理作成機能(カード充足率判定・`family_dishes`、1レシピ1回の達成制)+ 家族ランク機能(達成種類数に応じた7段階ランク表示・演出) | 2〜3 |
