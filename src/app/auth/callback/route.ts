@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   // パスワード再設定メールなど、認証後の遷移先を変えたい場合に使う。
   // 外部URLへのオープンリダイレクトを避けるため、サイト内の絶対パスのみ許可する。
   const next = searchParams.get("next");
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/recipes";
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
 
   if (code) {
     const supabase = await createClient();

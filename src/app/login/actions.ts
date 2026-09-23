@@ -25,5 +25,5 @@ export async function signInWithPassword(
     return { error: "ログインに失敗しました。メールアドレスまたはパスワードが正しくありません" };
   }
 
-  redirect("/recipes");
+  redirect("/");
 }
