@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { categoryIcon, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_LABELS, RARITY_STYLES, monthsLabel, type CardRarity } from "@/lib/game/cards";
+import { RARITY_LABELS, RARITY_STYLES, monthsLabel, rarityStars, type CardRarity } from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 type CardRow = {
@@ -70,10 +70,14 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
         ← 図鑑一覧に戻る
       </Link>
 
-      <div className={`mt-4 rounded-xl border-2 bg-white p-5 shadow-raised ${style.border}`}>
+      <div
+        className={`mt-4 rounded-xl border-2 bg-white p-5 shadow-raised ${
+          isOwned ? `${style.border} ${style.glow}` : "border-gray-200"
+        }`}
+      >
         <div
-          className={`flex aspect-square w-full items-center justify-center rounded-lg bg-gray-100 text-5xl ${
-            isOwned ? "" : "grayscale brightness-50"
+          className={`flex aspect-square w-full items-center justify-center rounded-lg text-5xl ${
+            isOwned ? style.imageBg : "bg-gray-100 grayscale brightness-50"
           }`}
         >
           {src ? (
@@ -92,9 +96,14 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
           <ZoneIcon zone="game" icon={categoryIcon(category)} />
           <h1 className="text-xl font-bold">{isOwned ? card.ingredients_master?.name : "？？？(未入手)"}</h1>
         </div>
-        <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs ${style.badgeBg} ${style.badgeText}`}>
-          {RARITY_LABELS[card.rarity]}
-        </span>
+        <div className="mt-2 flex items-center gap-2">
+          <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${style.badgeBg} ${style.badgeText}`}>
+            {RARITY_LABELS[card.rarity]}
+          </span>
+          {isOwned ? (
+            <span className={`text-sm tracking-wide ${style.badgeText}`}>{rarityStars(card.rarity)}</span>
+          ) : null}
+        </div>
 
         {isOwned ? (
           <div className="mt-4 space-y-3 text-sm">

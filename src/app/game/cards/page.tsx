@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { categoryIcon, sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_STYLES, monthsLabel, type CardRarity } from "@/lib/game/cards";
+import { RARITY_STYLES, monthsLabel, rarityStars, type CardRarity } from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 export const metadata = { title: "食材図鑑" };
@@ -79,11 +79,13 @@ export default async function GameCardsPage() {
                   <Link
                     key={item.id}
                     href={`/game/cards/${item.id}`}
-                    className={`block rounded-xl border-2 bg-white p-3 shadow-raised transition hover:-translate-y-0.5 ${style.border}`}
+                    className={`block rounded-xl border-2 bg-white p-3 shadow-raised transition hover:-translate-y-0.5 ${
+                      isOwned ? style.border : "border-gray-200"
+                    } ${isOwned ? style.glow : ""}`}
                   >
                     <div
-                      className={`flex aspect-square w-full items-center justify-center rounded-lg bg-gray-100 text-3xl ${
-                        isOwned ? "" : "grayscale brightness-50"
+                      className={`flex aspect-square w-full items-center justify-center rounded-lg text-3xl ${
+                        isOwned ? style.imageBg : "bg-gray-100 grayscale brightness-50"
                       }`}
                     >
                       {src ? (
@@ -94,6 +96,9 @@ export default async function GameCardsPage() {
                       )}
                     </div>
                     <p className="mt-2 truncate text-sm font-semibold">{isOwned ? item.name : "？？？"}</p>
+                    {isOwned ? (
+                      <p className={`mt-0.5 text-xs tracking-wide ${style.badgeText}`}>{rarityStars(item.rarity)}</p>
+                    ) : null}
                     <p className="mt-0.5 text-xs text-gray-500">旬: {monthsLabel(item.seasonMonths)}</p>
                   </Link>
                 );
