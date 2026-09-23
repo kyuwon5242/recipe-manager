@@ -36,12 +36,26 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
       <LoginForm />
 
+      <p className="mt-3 text-center text-sm">
+        <Link href="/forgot-password" className="text-brand-700 hover:underline">
+          パスワードをお忘れですか?
+        </Link>
+      </p>
+
       <p className="mt-6 text-center text-sm text-gray-500">
         アカウントをお持ちでない方は{" "}
         <Link href="/signup" className="text-brand-700 hover:underline">
           新規登録
         </Link>
       </p>
+
+      {process.env.NODE_ENV !== "production" ? (
+        <p className="mt-4 text-center text-xs">
+          <Link href="/api/dev-login" className="text-gray-400 hover:underline">
+            🧪 開発用: テストアカウントでログイン
+          </Link>
+        </p>
+      ) : null}
 
       <p className="mt-10 text-center text-xs text-gray-300">
         version {getAppVersion()}

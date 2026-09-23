@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAppVersion } from "@/lib/version";
 import { logEvent, startTimer } from "@/lib/logging/log";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/suspended"];
+const PUBLIC_PATHS = ["/login", "/signup", "/suspended", "/forgot-password"];
+// 開発環境専用のテストアカウント自動ログイン(/api/dev-login自体で
+// NODE_ENV===productionなら404にする)。ログイン中かどうかに関わらず常に
+// 素通りさせ、テストアカウントへの切り替えをサインアウト無しで行えるようにする。
+const DEV_LOGIN_PATH = "/api/dev-login";
 const APP_VERSION_COOKIE = "app_version";
 // これを超えた処理時間のリクエストは、遅延調査用にapp_logsへ記録する。
 // Vercel無料プランのRuntime Logsは1時間しか残らないため、これで補う。
@@ -38,6 +42,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  if (pathname === DEV_LOGIN_PATH) {
+    return supabaseResponse;
+  }
   const isPublicPath = PUBLIC_PATHS.includes(pathname) || pathname.startsWith("/auth/callback");
 
   // 新しいバージョンがデプロイされた後も古いクライアントで操作を続けられて
@@ -102,7 +109,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       return NextResponse.redirect(url);
     }
 
-    if (pathname !== "/family/setup" && pathname !== "/suspended") {
+    if (pathname !== "/family/setup" && pathname !== "/suspended" && pathname !== "/reset-password") {
       const { data: membership } = await supabase
         .from("family_members")
         .select("family_id")
