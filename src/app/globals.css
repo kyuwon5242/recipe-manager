@@ -47,3 +47,16 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* 食材図鑑カード(レア以上)の光の帯が斜めに走るシマー演出。
+   duration はレアリティごとにインラインstyleで上書きする(上位ほど速い)。 */
+@keyframes card-shimmer {
+  0% { transform: translateX(-120%) rotate(12deg); }
+  100% { transform: translateX(220%) rotate(12deg); }
+}
+
+/* レジェンドカードの光彩がゆっくり明滅する演出 */
+@keyframes card-glow-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}

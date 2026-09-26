@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-09-23(フェーズ23時点)
+最終更新: 2026-09-26(フェーズ24時点)
 
 ---
 
@@ -141,16 +141,15 @@
 | ADMIN-7 | エラー・警告・処理時間(遅延)のログをレベル別に確認する | 管理者 | `/admin/logs` |
 | ADMIN-8 | ユーザー別AI利用上限の週間上限額を変更する、上限に達したユーザー(自分自身を含む)を個別に復活(リセット)させる | 管理者 | `/admin/ai-usage` |
 | ADMIN-9 | ユーザーごとに新レシピ提案・献立提案・レシピURL自動抽出の利用可否を切り替える(管理者自身は常に利用可) | 管理者 | `/admin/users` |
-| ADMIN-10 | 食材マスタにAIで「旬の月」を一括生成し、内容を確認・修正する(ゲーム要素のガチャ確率調整用) | 管理者 | `/admin/seasons` |
-| ADMIN-11 | 食材ごとに図鑑カード(レアリティ・豆知識・イラストファイル名・栄養素メモ)を作成・削除する | 管理者 | `/admin/game-cards` |
+| ADMIN-10 | 食材ごとに図鑑カード(旬の月・読み仮名・レアリティ・豆知識・イラストファイル名・栄養素メモ)を作成・編集・削除する。カード管理はこの画面に一本化されている | 管理者 | `/admin/game-cards` |
 
 #### ゲーム要素(食育×カード収集。フェーズ23時点はフェーズA=図鑑閲覧基盤のみ。ガチャ・クイズ・料理作成は未実装)
 
 | ID | ユースケース | アクター | 画面/機能 |
 |---|---|---|---|
 | GAME-1 | 家族の図鑑(所持カード)の進み具合を確認する | 家族メンバー/オーナー | `/game` |
-| GAME-2 | 食材カードの図鑑一覧を見る(未入手カードはカテゴリアイコンのプレースホルダー表示) | 家族メンバー/オーナー | `/game/cards` |
-| GAME-3 | 入手済みカードの詳細(旬・豆知識・栄養素・最初の入手者)を確認する | 家族メンバー/オーナー | `/game/cards/[id]` |
+| GAME-2 | 食材カードの図鑑一覧を見る(未入手カードはカテゴリアイコンのプレースホルダー表示、入手済みはカテゴリごとの色・レアリティごとの光り方で表示) | 家族メンバー/オーナー | `/game/cards` |
+| GAME-3 | 入手済みカードの詳細(旬・読み仮名・豆知識・栄養素・最初の入手者)を確認する。漢字を含む名前・説明文にはふりがなが表示される | 家族メンバー/オーナー | `/game/cards/[id]` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -211,8 +210,7 @@ ADMIN-2/3(問題のあるユーザーを確認・利用停止) → ADMIN-5(食�
 | `/admin/users` | 全ユーザー一覧(表示名編集・利用停止) | 要管理者 |
 | `/admin/ai-usage` | AI利用量(ユーザー別・機能別のトークン数・概算コスト) | 要管理者 |
 | `/admin/logs` | アプリログ(トレース・エラー・処理時間) | 要管理者 |
-| `/admin/seasons` | 食材マスタの「旬の月」をAIで一括生成・確認・修正(ゲーム要素) | 要管理者 |
-| `/admin/game-cards` | 食材図鑑カードの作成・削除(ゲーム要素) | 要管理者 |
+| `/admin/game-cards` | 食材図鑑カードの作成・編集・削除(旬・読み仮名・レアリティ・豆知識・イラスト。ゲーム要素) | 要管理者 |
 
 ## C. データベース仕様(現在のスキーマ)
 
@@ -224,7 +222,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `families` | `id`(PK), `name`, `invite_code`(unique), `owner_id`(→profiles), `created_at` | 家族。作成・招待参加はRPC(`create_family`/`join_family_with_code`)経由 |
 | `family_members` | `family_id`+`user_id`(複合PK), `role`(owner/member), `joined_at` | 家族の所属関係 |
 | `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ(フェーズ16で`photo_url`列を廃止) |
-| `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `season_months`(integer[], null可), `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照)。`season_months`はゲーム要素のガチャ確率調整用(フェーズ23、`/admin/seasons`でAI一括生成・手動修正) |
+| `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `season_months`(integer[], null可), `reading`(text, null可), `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照)。`season_months`(ガチャ確率調整用)・`reading`(ひらがなの読み。図鑑カードのルビ表示用)はいずれもゲーム要素向けで、`/admin/game-cards`のカード編集画面から食材ごとに設定する |
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
 | `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
@@ -242,7 +240,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 
 主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0019_game_phase_a.sql`(詳細は5〜29章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0020_ingredient_reading.sql`(詳細は5〜30章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 

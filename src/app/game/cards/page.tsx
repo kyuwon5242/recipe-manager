@@ -2,8 +2,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { GameCardVisual } from "@/components/GameCardVisual";
+import { FuriganaName } from "@/components/FuriganaName";
 import { categoryIcon, sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_STYLES, monthsLabel, rarityStars, type CardRarity } from "@/lib/game/cards";
+import { RARITY_BADGE_STYLES, monthsLabel, rarityStars, type CardRarity } from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 export const metadata = { title: "食材図鑑" };
@@ -12,7 +14,12 @@ type CardRow = {
   id: string;
   rarity: CardRarity;
   illustration_url: string | null;
-  ingredients_master: { name: string; category: string | null; season_months: number[] | null } | null;
+  ingredients_master: {
+    name: string;
+    reading: string | null;
+    category: string | null;
+    season_months: number[] | null;
+  } | null;
 };
 
 export default async function GameCardsPage() {
@@ -22,7 +29,7 @@ export default async function GameCardsPage() {
   const [{ data: cards, error: cardsError }, { data: owned, error: ownedError }] = await Promise.all([
     supabase
       .from("game_cards")
-      .select("id, rarity, illustration_url, ingredients_master(name, category, season_months)")
+      .select("id, rarity, illustration_url, ingredients_master(name, reading, category, season_months)")
       .returns<CardRow[]>(),
     supabase.from("family_cards").select("card_id, owned_count").eq("family_id", familyId),
   ]);
@@ -41,6 +48,7 @@ export default async function GameCardsPage() {
     rarity: card.rarity,
     illustrationUrl: card.illustration_url,
     name: card.ingredients_master?.name ?? "(不明な食材)",
+    reading: card.ingredients_master?.reading ?? null,
     category: card.ingredients_master?.category ?? UNCATEGORIZED_LABEL,
     seasonMonths: card.ingredients_master?.season_months ?? null,
     ownedCount: ownedByCardId.get(card.id) ?? 0,
@@ -73,31 +81,26 @@ export default async function GameCardsPage() {
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
               {list.map((item) => {
                 const isOwned = item.ownedCount > 0;
-                const style = RARITY_STYLES[item.rarity];
+                const badge = RARITY_BADGE_STYLES[item.rarity];
                 const src = isOwned ? resolveCardImageSrc(item.illustrationUrl) : null;
                 return (
                   <Link
                     key={item.id}
                     href={`/game/cards/${item.id}`}
-                    className={`block rounded-xl border-2 bg-white p-3 shadow-raised transition hover:-translate-y-0.5 ${
-                      isOwned ? style.border : "border-gray-200"
-                    } ${isOwned ? style.glow : ""}`}
+                    className="block rounded-xl border-2 border-white bg-white p-3 shadow-raised transition hover:-translate-y-0.5"
                   >
-                    <div
-                      className={`flex aspect-square w-full items-center justify-center rounded-lg text-3xl ${
-                        isOwned ? style.imageBg : "bg-gray-100 grayscale brightness-50"
-                      }`}
-                    >
-                      {src ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={src} alt={item.name} className="h-full w-full rounded-lg object-cover" />
-                      ) : (
-                        <span aria-hidden="true">{categoryIcon(item.category)}</span>
-                      )}
-                    </div>
-                    <p className="mt-2 truncate text-sm font-semibold">{isOwned ? item.name : "？？？"}</p>
+                    <GameCardVisual
+                      category={item.category}
+                      rarity={item.rarity}
+                      src={src}
+                      alt={item.name}
+                      isOwned={isOwned}
+                    />
+                    <p className="mt-2 truncate text-sm font-semibold">
+                      {isOwned ? <FuriganaName name={item.name} reading={item.reading} /> : "？？？"}
+                    </p>
                     {isOwned ? (
-                      <p className={`mt-0.5 text-xs tracking-wide ${style.badgeText}`}>{rarityStars(item.rarity)}</p>
+                      <p className={`mt-0.5 text-xs tracking-wide ${badge.text}`}>{rarityStars(item.rarity)}</p>
                     ) : null}
                     <p className="mt-0.5 text-xs text-gray-500">旬: {monthsLabel(item.seasonMonths)}</p>
                   </Link>

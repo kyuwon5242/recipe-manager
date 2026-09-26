@@ -31,6 +31,24 @@ export function GameCardCreateForm({
         </select>
       </div>
       <div>
+        <label className="block text-sm font-medium text-gray-700">読み(ひらがな)</label>
+        <input
+          type="text"
+          name="reading"
+          placeholder="例: とまと"
+          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">旬の月(カンマ区切り。無ければ空欄)</label>
+        <input
+          type="text"
+          name="season_months"
+          placeholder="例: 6,7,8"
+          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
         <label className="block text-sm font-medium text-gray-700">レアリティ</label>
         <select
           name="rarity"
@@ -57,7 +75,9 @@ export function GameCardCreateForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">豆知識(こども向け・ひらがな中心)</label>
+        <label className="block text-sm font-medium text-gray-700">
+          豆知識(こども向け)。漢字にふりがなを振る場合は「漢字{"{かんじ}"}」の形式で入力
+        </label>
         <textarea
           name="trivia_kids_text"
           rows={2}

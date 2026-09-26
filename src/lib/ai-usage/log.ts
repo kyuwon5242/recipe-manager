@@ -9,6 +9,7 @@ export type AiFeature =
   | "ingredient_resolve"
   | "ingredient_cleanup"
   | "ingredient_season_assign"
+  | "ingredient_reading_assign"
   | "menu_agent_gate"
   | "menu_agent_loop";
 
@@ -19,6 +20,7 @@ export const AI_FEATURE_LABELS: Record<AiFeature, string> = {
   ingredient_resolve: "食材名解決(保存時)",
   ingredient_cleanup: "食材マスタ一括整理",
   ingredient_season_assign: "食材マスタ旬データ生成(ゲーム要素)",
+  ingredient_reading_assign: "食材マスタ読み仮名生成(ゲーム要素)",
   menu_agent_gate: "献立エージェント(門番判定)",
   menu_agent_loop: "献立エージェント(本体)",
 };
