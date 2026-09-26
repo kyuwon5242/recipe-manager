@@ -48,15 +48,163 @@
   to { opacity: 1; }
 }
 
-/* 食材図鑑カード(レア以上)の光の帯が斜めに走るシマー演出。
-   duration はレアリティごとにインラインstyleで上書きする(上位ほど速い)。 */
-@keyframes card-shimmer {
-  0% { transform: translateX(-120%) rotate(12deg); }
-  100% { transform: translateX(220%) rotate(12deg); }
+/* 食材図鑑カード(GameCardVisual)。
+   - 縁取り・背景: カテゴリの色相(--h)と彩度係数(--k)で塗り分け、
+     レアリティ(.n/.r/.s/.u)が上がるほど濃く・鮮やかにする
+   - 光り方: SR以上は白い光が走る。レジェンドのみ虹色のホロ・きらめき・
+     脈打つ光彩・金の内枠が付く
+   サイズは親(.game-card)の幅基準(cqw)なので、一覧・詳細・管理画面の
+   縮小表示のどれでも同じ見た目のまま拡縮する。 */
+.game-card {
+  container-type: inline-size;
+  aspect-ratio: 5 / 7;
+  width: 100%;
 }
 
-/* レジェンドカードの光彩がゆっくり明滅する演出 */
-@keyframes card-glow-pulse {
-  0%, 100% { opacity: 0.7; }
+.game-card-frame {
+  --fl: 72; --fs: 35; --l1: 95; --l2: 86; --sat: 45; --fw: 1.9cqw;
+  --fc: calc(var(--sat) * var(--k) * 1%);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 7.7cqw;
+  padding: var(--fw);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--h) calc(var(--fs) * var(--k) * 1%) calc(var(--fl) * 1% + 20%)),
+    hsl(var(--h) calc(var(--fs) * var(--k) * 1%) calc(var(--fl) * 1%)),
+    hsl(var(--h) calc(var(--fs) * var(--k) * 1%) calc(var(--fl) * 1% + 20%)),
+    hsl(var(--h) calc(var(--fs) * var(--k) * 1%) calc(var(--fl) * 1% - 8%))
+  );
+}
+.game-card-frame.r { --fl: 58; --fs: 45; --l1: 84; --l2: 68; --sat: 55; --fw: 2.6cqw; box-shadow: 0 0 5cqw rgba(255, 255, 255, 0.3); }
+.game-card-frame.s { --fl: 42; --fs: 55; --l1: 66; --l2: 46; --sat: 66; --fw: 3.8cqw; box-shadow: 0 0 7.7cqw hsl(var(--h) calc(70 * var(--k) * 1%) 60% / 0.55); }
+.game-card-frame.u { --fl: 28; --fs: 65; --l1: 46; --l2: 20; --sat: 78; --fw: 5.1cqw; box-shadow: 0 0 9cqw 1cqw rgba(255, 205, 70, 0.55); }
+.game-card-frame.u::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 17cqw 3cqw rgba(255, 205, 70, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  animation: game-card-pulse 2s ease-in-out infinite;
+}
+
+.game-card-inner {
+  position: relative;
+  height: 100%;
+  border-radius: 5cqw;
+  overflow: hidden;
+  padding: 3.8cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 3.2cqw;
+  background: linear-gradient(
+    160deg,
+    hsl(var(--h) var(--fc) calc(var(--l1) * 1%)),
+    hsl(var(--h) var(--fc) calc(var(--l2) * 1%))
+  );
+}
+.game-card-frame.u .game-card-inner {
+  box-shadow: inset 0 0 0 1.3cqw #ffd76a, inset 0 0 9cqw rgba(255, 220, 120, 0.6);
+}
+
+.game-card-plate,
+.game-card-foot {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 3.8cqw;
+  background: rgba(255, 255, 255, 0.88);
+  color: hsl(var(--h) calc(60 * var(--k) * 1%) 18%);
+}
+.game-card-plate { padding: 1.9cqw 3.8cqw; font-size: 7.7cqw; font-weight: 700; line-height: 1.25; }
+.game-card-plate > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-card-stars { flex: none; font-size: 5.8cqw; color: #c48a00; }
+.game-card-foot { padding: 1.3cqw 3.8cqw; font-size: 6.4cqw; }
+.game-card-chip {
+  padding: 0 3.8cqw;
+  border-radius: 999px;
+  font-size: 5.8cqw;
+  font-weight: 700;
+  background: #e4e6eb;
+  color: #4b5060;
+}
+.game-card-frame.r .game-card-chip { background: linear-gradient(135deg, #f4f6f9, #aab2be); color: #39404c; }
+.game-card-frame.s .game-card-chip { background: linear-gradient(135deg, #fff0a8, #d9a520); color: #5a3a00; }
+.game-card-frame.u .game-card-chip { background: linear-gradient(115deg, #ffe98a, #ff9ad5, #8ee8ff, #ffe98a); color: #4a2a00; }
+
+/* イラストは全レアリティで白い紙の窓に収める(画像は白背景で用意する) */
+.game-card-art {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 3.8cqw;
+  background: #fdfcf8;
+  box-shadow: inset 0 0 0 1px hsl(var(--h) calc(30 * var(--k) * 1%) 40% / 0.5);
+}
+.game-card-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* 白い光が走る(SR以上)/ 虹色のホロが走る(レジェンド) */
+.game-card-frame.s .game-card-inner::after,
+.game-card-frame.u .game-card-inner::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+  width: 300%;
+  z-index: 4;
+  pointer-events: none;
+  will-change: transform;
+  animation: game-card-sweep 4s linear infinite;
+}
+.game-card-frame.s .game-card-inner::after {
+  background-image: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.5) 50%, transparent 58%);
+}
+.game-card-frame.u .game-card-inner::after {
+  background-image: linear-gradient(115deg, transparent 15%, rgba(255, 110, 200, 0.38) 32%, rgba(110, 235, 255, 0.4) 48%, rgba(255, 240, 120, 0.45) 64%, transparent 82%);
+  animation-duration: 2.6s;
+}
+
+.game-card-sparkle {
+  position: absolute;
+  z-index: 6;
+  color: #fff;
+  font-size: 7.7cqw;
+  font-style: normal;
+  text-shadow: 0 0 6px #fff, 0 0 12px #ffd23f;
+  pointer-events: none;
+  animation: game-card-twinkle 2.2s ease-in-out infinite;
+}
+
+/* 管理画面などの縮小表示: 名前・フッターは出さずイラスト枠だけにする */
+.game-card[data-compact] .game-card-plate,
+.game-card[data-compact] .game-card-foot,
+.game-card[data-compact] .game-card-sparkle { display: none; }
+
+@keyframes game-card-sweep {
+  0% { transform: translateX(28%); }
+  100% { transform: translateX(-28%); }
+}
+@keyframes game-card-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes game-card-pulse {
+  0%, 100% { opacity: 0; }
   50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-card-frame::before,
+  .game-card-frame .game-card-inner::after,
+  .game-card-sparkle { animation: none !important; }
 }

@@ -1071,3 +1071,15 @@ Claude Codeとの開発を継続する中で気づいた開発基盤の課題へ
 - 実機の`/game/cards/[id]`でルビ表示(食材名・説明文の両方)を確認済み。一時ルートは4つとも確認後に削除済み(`src/app/api/admin/`配下を丸ごと削除)。
 
 **手動対応が必要な作業**: `supabase/migrations/0020_ingredient_reading.sql`はSupabase SQL Editorでの手動実行が必要(実行済み)。
+
+## 31. 食材カード画像の紐づけ・図鑑の暫定全公開・カードデザイン刷新(フェーズ25)
+
+- **画像の紐づけ**: `supabase/migrations/0021_game_card_illustration_names.sql`で全カードの`illustration_url`を「食材名.png」に統一(SQL Editorで手動実行)。`resolveCardImageSrc`(`src/lib/game/card-image.ts`)は指定名のファイルが無ければ同名で拡張子違い(.jpg/.jpeg/.webp)を探す(事前配置のサンプルが.jpgのため)。
+- **暫定の全公開**: ガチャ実装(フェーズB)まで、`REVEAL_ALL_CARDS_UNTIL_GACHA`(`src/lib/game/cards.ts`)により全カードを入手済み扱いで閲覧できる。ガチャ実装時にfalse化または削除する。
+- **カードデザイン刷新**: ユーザーと3案(A ホロ・ゴールド/B 枠グレード重視/C フルアート)のサンプルを比較し、案Aをベースに次の仕様で確定した。
+  - 縁取り・背景をカテゴリの色相(`categoryCardHue`)で塗り分け、レアリティが上がるほど濃くする。
+  - 光り方はSR以上で白い光が走る。虹色ホロ・きらめき・脈打つ光彩・金の内枠はレジェンドのみ。放射状の光線は不要と判断し無し。
+  - イラストは全レアリティで白い紙の窓に収める(SRを背景に溶け込ませる案は不採用)。
+  - `GameCardVisual`が縦長カード1枚(名前・★・イラスト・旬・略称チップ)を描く形に変更。スタイルは`globals.css`の`.game-card-*`(親幅基準のcqw単位)に集約し、一覧・詳細・管理画面の縮小表示(`compact`)で共通利用する。旧Tailwindクラス方式(`RARITY_EFFECTS`/`categoryCardStyle`)は廃止。
+  - 長い食材名は文字サイズを段階的に縮小して名前板に収める。
+  - アニメーションは`transform`/`opacity`のみ(100枚並べても重くならないため)。`prefers-reduced-motion`では停止する。

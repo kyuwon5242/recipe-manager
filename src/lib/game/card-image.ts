@@ -9,11 +9,20 @@ import path from "node:path";
 export function resolveCardImageSrc(illustrationUrl: string | null): string | null {
   if (!illustrationUrl) return null;
 
-  const filePath = path.join(process.cwd(), "public", "cards", illustrationUrl);
-  try {
-    if (!fs.existsSync(filePath)) return null;
-  } catch {
-    return null;
+  // 登録名(食材名.png)のファイルが無ければ、同名で拡張子違いのファイル
+  // (事前配置のサンプルが.jpgの場合など)を探す。
+  const ext = path.extname(illustrationUrl);
+  const base = illustrationUrl.slice(0, illustrationUrl.length - ext.length);
+  const candidates = new Set([illustrationUrl, ...[".png", ".jpg", ".jpeg", ".webp"].map((e) => base + e)]);
+
+  for (const fileName of candidates) {
+    try {
+      if (fs.existsSync(path.join(process.cwd(), "public", "cards", fileName))) {
+        return `/cards/${fileName}`;
+      }
+    } catch {
+      // 読み取れない場合は次の候補へ
+    }
   }
-  return `/cards/${illustrationUrl}`;
+  return null;
 }

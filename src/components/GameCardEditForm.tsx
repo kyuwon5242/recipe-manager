@@ -54,8 +54,9 @@ export function GameCardEditForm({ card }: { card: EditableCard }) {
             category={card.category}
             rarity={card.rarity}
             src={null}
-            alt={card.name}
+            name={card.name}
             isOwned={false}
+            compact
             iconClassName="text-xl"
           />
         </div>

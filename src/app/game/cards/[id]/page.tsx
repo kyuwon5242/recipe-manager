@@ -7,7 +7,14 @@ import { GameCardVisual } from "@/components/GameCardVisual";
 import { FuriganaName } from "@/components/FuriganaName";
 import { FuriganaText } from "@/components/FuriganaText";
 import { categoryIcon, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { RARITY_LABELS, RARITY_BADGE_STYLES, monthsLabel, rarityStars, type CardRarity } from "@/lib/game/cards";
+import {
+  RARITY_LABELS,
+  RARITY_BADGE_STYLES,
+  REVEAL_ALL_CARDS_UNTIL_GACHA,
+  monthsLabel,
+  rarityStars,
+  type CardRarity,
+} from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 type CardRow = {
@@ -57,7 +64,7 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
     throw new Error(`所持状況の取得に失敗しました: ${ownedError.message}`);
   }
 
-  const isOwned = (owned?.owned_count ?? 0) > 0;
+  const isOwned = REVEAL_ALL_CARDS_UNTIL_GACHA || (owned?.owned_count ?? 0) > 0;
 
   let acquiredByName: string | null = null;
   if (owned?.first_acquired_by) {
@@ -79,17 +86,22 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
         ← 図鑑一覧に戻る
       </Link>
 
-      <div className="mt-4 rounded-xl border-2 border-white bg-white p-5 shadow-raised">
+      <div className="mx-auto mt-4 w-64 max-w-full">
         <GameCardVisual
           category={category}
           rarity={card.rarity}
           src={src}
-          alt={card.ingredients_master?.name ?? ""}
+          name={card.ingredients_master?.name ?? ""}
+          reading={card.ingredients_master?.reading ?? null}
+          seasonMonths={card.ingredients_master?.season_months ?? null}
           isOwned={isOwned}
           iconClassName="text-5xl"
         />
+      </div>
 
-        <div className="mt-3 flex items-center gap-2">
+      <div className="mt-4 rounded-xl border-2 border-white bg-white p-5 shadow-raised">
+
+        <div className="flex items-center gap-2">
           <ZoneIcon zone="game" icon={categoryIcon(category)} />
           <h1 className="text-xl font-bold">
             {isOwned ? (
