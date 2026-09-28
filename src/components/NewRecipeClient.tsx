@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { RecipeForm } from "@/components/RecipeForm";
 import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
+import { AiContentNotice } from "@/components/AiContentNotice";
 import { createRecipe } from "@/app/recipes/actions";
 import { extractRecipeFromUrl } from "@/app/recipes/extract-actions";
 
@@ -53,6 +54,9 @@ export function NewRecipeClient({ canUseAi }: { canUseAi: boolean }) {
           <p className="mt-1 text-xs text-gray-500">
             レシピサイトのURLを入力すると、AIが材料・手順を読み取ってフォームに入力します。
           </p>
+          <AiContentNotice>
+            読み取り結果はAIが作成したもので、材料・分量・手順に誤りが含まれる場合があります。登録前に内容を確認してください。
+          </AiContentNotice>
           <div className="mt-2 flex gap-2">
             <input
               type="url"

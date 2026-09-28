@@ -7,10 +7,6 @@
 //   (SR以上: 白い光が走る / レジェンドのみ: 虹色ホロ・きらめき・脈打つ光彩・金の内枠)
 // 色相と「特別感」を別の軸に分けることで、両方を重ねても意味が混ざらないようにしている。
 
-// 【暫定】ガチャ実装(フェーズB)が完了するまで、未入手のカードも図鑑で
-// イラスト・詳細つきで閲覧できるようにする。ガチャ実装時はfalseにする(または削除する)。
-export const REVEAL_ALL_CARDS_UNTIL_GACHA = true;
-
 export const CARD_RARITIES = ["normal", "rare", "super_rare", "legendary"] as const;
 export type CardRarity = (typeof CARD_RARITIES)[number];
 

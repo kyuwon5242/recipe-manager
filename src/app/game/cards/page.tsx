@@ -4,7 +4,7 @@ import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { GameCardVisual } from "@/components/GameCardVisual";
 import { categoryIcon, sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
-import { REVEAL_ALL_CARDS_UNTIL_GACHA, type CardRarity } from "@/lib/game/cards";
+import type { CardRarity } from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 export const metadata = { title: "食材図鑑" };
@@ -79,7 +79,7 @@ export default async function GameCardsPage() {
             </h2>
             <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {list.map((item) => {
-                const isOwned = REVEAL_ALL_CARDS_UNTIL_GACHA || item.ownedCount > 0;
+                const isOwned = item.ownedCount > 0;
                 const src = isOwned ? resolveCardImageSrc(item.illustrationUrl) : null;
                 return (
                   <Link key={item.id} href={`/game/cards/${item.id}`} className="block transition hover:-translate-y-0.5">

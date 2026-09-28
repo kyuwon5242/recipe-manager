@@ -208,3 +208,19 @@
   .game-card-frame .game-card-inner::after,
   .game-card-sparkle { animation: none !important; }
 }
+
+/* ガチャ演出(GachaDrawer)。抽選中はパックが揺れ、結果のカードは裏面から回って現れる。 */
+.gacha-pack { animation: gacha-shake 0.5s ease-in-out infinite; }
+.gacha-reveal { animation: gacha-reveal 0.7s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
+@keyframes gacha-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg) scale(1.05); }
+  75% { transform: rotate(6deg) scale(1.05); }
+}
+@keyframes gacha-reveal {
+  0% { opacity: 0; transform: perspective(600px) rotateY(90deg) scale(0.7); }
+  100% { opacity: 1; transform: perspective(600px) rotateY(0deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gacha-pack, .gacha-reveal { animation: none; }
+}

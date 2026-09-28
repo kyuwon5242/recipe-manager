@@ -4,6 +4,7 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
 import { AiFeatureLockedNotice } from "@/components/AiFeatureLockedNotice";
+import { AiContentNotice } from "@/components/AiContentNotice";
 import { createClient } from "@/lib/supabase/server";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
@@ -49,6 +50,9 @@ export default async function MenuPlanPage() {
       {canUseAi ? (
         <>
           {quota ? <AiQuotaGauge status={quota} /> : null}
+          <AiContentNotice>
+            提案される組み合わせはAIが作成したもので、意図しない偏りが含まれる場合があります。参考情報としてご利用ください。
+          </AiContentNotice>
           <MealPlanForm />
         </>
       ) : (

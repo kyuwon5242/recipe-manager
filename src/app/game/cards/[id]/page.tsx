@@ -6,11 +6,11 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 import { GameCardVisual } from "@/components/GameCardVisual";
 import { FuriganaName } from "@/components/FuriganaName";
 import { FuriganaText } from "@/components/FuriganaText";
+import { AiContentNotice } from "@/components/AiContentNotice";
 import { categoryIcon, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
 import {
   RARITY_LABELS,
   RARITY_BADGE_STYLES,
-  REVEAL_ALL_CARDS_UNTIL_GACHA,
   monthsLabel,
   rarityStars,
   type CardRarity,
@@ -64,7 +64,7 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
     throw new Error(`所持状況の取得に失敗しました: ${ownedError.message}`);
   }
 
-  const isOwned = REVEAL_ALL_CARDS_UNTIL_GACHA || (owned?.owned_count ?? 0) > 0;
+  const isOwned = (owned?.owned_count ?? 0) > 0;
 
   let acquiredByName: string | null = null;
   if (owned?.first_acquired_by) {
@@ -144,10 +144,13 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
                   : ""}
               </p>
             ) : null}
+            <AiContentNotice>
+              豆知識・栄養素の説明はAIが作成し、人が内容を確認したものです。まれに不正確な内容が含まれる場合があるため、参考情報としてご利用ください。
+            </AiContentNotice>
           </div>
         ) : (
           <p className="mt-4 text-sm text-gray-500">
-            まだ入手していないカードです。ガチャ機能の実装後、入手すると詳細が見られるようになります。
+            まだ入手していないカードです。ガチャで入手すると詳細が見られるようになります。
           </p>
         )}
       </div>

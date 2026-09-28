@@ -89,6 +89,28 @@ export default async function AdminPage() {
             </p>
           </Link>
         </li>
+        <li>
+          <Link
+            href="/admin/game-gacha"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">🎁 ガチャ確率設定(ゲーム要素)</p>
+            <p className="mt-1 text-sm text-gray-500">
+              レアリティごとの出現率と、旬の食材の出やすさを調整できます。
+            </p>
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/admin/game-quiz"
+            className="block rounded-lg border border-gray-200 bg-white p-4 shadow-raised transition hover:-translate-y-0.5 hover:border-brand-500"
+          >
+            <p className="font-semibold">❓ クイズ問題一覧(ゲーム要素)</p>
+            <p className="mt-1 text-sm text-gray-500">
+              登録済みのクイズの問題文・選択肢・正解・解説を確認できます(参照のみ)。
+            </p>
+          </Link>
+        </li>
       </ul>
     </div>
   );

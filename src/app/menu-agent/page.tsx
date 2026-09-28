@@ -6,6 +6,7 @@ import { MenuAgentChat } from "@/components/MenuAgentChat";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
+import { AiContentNotice } from "@/components/AiContentNotice";
 
 export const metadata = { title: "献立エージェント" };
 
@@ -41,6 +42,9 @@ export default async function MenuAgentPage() {
         会話しながら献立を決め、食材を確認し、買い物リストの作成まで進められます。
       </p>
       <AiQuotaGauge status={quota} />
+      <AiContentNotice>
+        提案される献立・レシピ内容はAIが作成したもので、分量・手順・栄養情報に誤りが含まれる場合があります。参考情報としてご利用ください。
+      </AiContentNotice>
 
       <div className="mt-6">
         <MenuAgentChat stores={stores} />

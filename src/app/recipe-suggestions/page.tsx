@@ -4,6 +4,7 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
 import { AiFeatureLockedNotice } from "@/components/AiFeatureLockedNotice";
+import { AiContentNotice } from "@/components/AiContentNotice";
 import { createClient } from "@/lib/supabase/server";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 
@@ -45,6 +46,9 @@ export default async function RecipeSuggestionsPage() {
       {canUseAi ? (
         <>
           {quota ? <AiQuotaGauge status={quota} /> : null}
+          <AiContentNotice>
+            提案されるレシピはAIが作成したもので、分量・手順・栄養情報に誤りが含まれる場合があります。参考情報としてご利用ください。
+          </AiContentNotice>
           <RecipeSuggestionForm />
         </>
       ) : (

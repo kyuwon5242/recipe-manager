@@ -142,14 +142,18 @@
 | ADMIN-8 | ユーザー別AI利用上限の週間上限額を変更する、上限に達したユーザー(自分自身を含む)を個別に復活(リセット)させる | 管理者 | `/admin/ai-usage` |
 | ADMIN-9 | ユーザーごとに新レシピ提案・献立提案・レシピURL自動抽出の利用可否を切り替える(管理者自身は常に利用可) | 管理者 | `/admin/users` |
 | ADMIN-10 | 食材ごとに図鑑カード(旬の月・読み仮名・レアリティ・豆知識・イラストファイル名・栄養素メモ)を作成・編集・削除する。カード管理はこの画面に一本化されている | 管理者 | `/admin/game-cards` |
+| ADMIN-11 | ガチャの出現確率(レアリティごとの重み、旬の食材の倍率)を変更する。入力中の重みから、現在のカード枚数を踏まえた実際の出現率をその場で確認できる | 管理者 | `/admin/game-gacha` |
+| ADMIN-12 | クイズ問題(問題文・選択肢・正解・解説・難易度・関連食材)を一覧で参照する。参照専用で、問題の追加・修正はSupabase SQL Editorで行う(問題IDで対象を指定) | 管理者 | `/admin/game-quiz` |
 
-#### ゲーム要素(食育×カード収集。フェーズ23時点はフェーズA=図鑑閲覧基盤のみ。ガチャ・クイズ・料理作成は未実装)
+#### ゲーム要素(食育×カード収集。フェーズ27時点はフェーズA〈図鑑閲覧〉・B〈ガチャ〉・C〈クイズ〉まで。料理作成・家族ランクは未実装)
 
 | ID | ユースケース | アクター | 画面/機能 |
 |---|---|---|---|
-| GAME-1 | 家族の図鑑(所持カード)の進み具合を確認する | 家族メンバー/オーナー | `/game` |
-| GAME-2 | 食材カードの図鑑一覧を見る(カードは名前・★・イラスト・旬・レアリティ略称〈N/R/SR/UR〉までを含む縦長の1枚として表示。縁取り・背景はカテゴリの色相で塗り分け、レアリティが上がるほど濃くなる。SR以上は白い光が走り、レジェンドのみ虹色ホロ・きらめき・脈打つ光彩・金の内枠が付く。イラストは全レアリティで白い紙の窓に収める。未入手はグレーのカードで「？？？」表示)。**暫定**: ガチャ実装までは`REVEAL_ALL_CARDS_UNTIL_GACHA`(`src/lib/game/cards.ts`)により全カードが入手済み扱いで閲覧できる(GAME-3も同様)。イラストは`game_cards.illustration_url`(基本は「食材名.png」、マイグレーション0021で統一)を`public/cards/`から読み込み、無ければ同名の.jpg/.jpeg/.webpを探す | 家族メンバー/オーナー | `/game/cards` |
+| GAME-1 | 家族の図鑑(所持カード)の進み具合・今日のガチャの残り回数・最近入手したカード(誰が引いたか付き)を確認する | 家族メンバー/オーナー | `/game` |
+| GAME-2 | 食材カードの図鑑一覧を見る(カードは名前・★・イラスト・旬・レアリティ略称〈N/R/SR/UR〉までを含む縦長の1枚として表示。縁取り・背景はカテゴリの色相で塗り分け、レアリティが上がるほど濃くなる。SR以上は白い光が走り、レジェンドのみ虹色ホロ・きらめき・脈打つ光彩・金の内枠が付く。イラストは全レアリティで白い紙の窓に収める。未入手はグレーのカードで「？？？」表示)。イラストは`game_cards.illustration_url`(基本は「食材名.png」、マイグレーション0021で統一)を`public/cards/`から読み込み、無ければ同名の.jpg/.jpeg/.webpを探す | 家族メンバー/オーナー | `/game/cards` |
 | GAME-3 | 入手済みカードの詳細(旬・読み仮名・豆知識・栄養素・最初の入手者)を確認する。漢字を含む名前・説明文にはふりがなが表示される | 家族メンバー/オーナー | `/game/cards/[id]` |
+| GAME-4 | 今日のガチャを引く(家族単位で1日3回。誰が引いても同じ回数を消費する。日付の切り替わりは日本時間0時。結果は裏面から回って現れる演出で、初入手なら「NEW!」、既に持っているなら「N枚目(ダブり)」を表示する。抽選はDB関数`draw_gacha()`が回数判定・抽選・カード付与・入手履歴の記録を1トランザクションで行う) | 家族メンバー/オーナー | `/game/gacha` |
+| GAME-5 | 今日のクイズに挑戦する(1人1日3問まで。カテゴリは栄養素・旬・産地・保存・調理豆知識、難易度はかんたん/ふつう/むずかしいが混ざる。選択式で、回答後に正解・不正解と解説を必ず表示し、関連食材のカードがあれば詳細へ誘導する。**正解1問につき家族のその日のガチャが+1回**〈`family_game_profile.bonus_draws_today`に加算、翌日リセット〉。同じ問題は同日中に再出題されず、自分がまだ答えていない問題が優先される。家族の他のメンバーもそれぞれ挑戦できる〈回数は個人単位〉) | 家族メンバー/オーナー | `/game/quiz` |
 
 #### 開発者向けツール(アプリ画面外)
 
@@ -201,8 +205,10 @@ ADMIN-2/3(問題のあるユーザーを確認・利用停止) → ADMIN-5(食�
 | `/family` | 家族設定(招待コード、メンバー一覧、名称変更) | 要ログイン |
 | `/menu-agent` | 献立エージェント(会話形式で献立決め〜買い物リスト作成、実験機能) | 要利用許可(管理者、または管理者が個別許可したユーザー) |
 | `/api/menu-agent` | 献立エージェントのAPI(Route Handler、NDJSONストリーミング) | 要利用許可(同上) |
-| `/game` | ゲーム要素ハブ(図鑑の進み具合。フェーズAのためガチャ・クイズ・料理作成はまだ無い) | 要ログイン |
-| `/game/cards` | 食材図鑑一覧(未入手はプレースホルダー表示) | 要ログイン |
+| `/game` | ゲーム要素ハブ(図鑑の進み具合、今日のガチャの残り回数、最近入手したカード。クイズ・料理作成はまだ無い) | 要ログイン |
+| `/game/gacha` | 今日のガチャ(残り回数・ガチャを引く・結果表示) | 要ログイン |
+| `/game/quiz` | 今日のクイズ(出題・回答・解説・ボーナス表示) | 要ログイン |
+| `/game/cards` | 食材図鑑一覧(未入手はグレーの「？？？」カード) | 要ログイン |
 | `/game/cards/[id]` | 食材カード詳細(入手済みのみ旬・豆知識・栄養素・入手者を表示) | 要ログイン |
 | `/ingredients` | 食材マスタの表記ゆれ・カテゴリ整理 | 要管理者 |
 | `/admin` | 管理者ダッシュボード | 要管理者 |
@@ -211,6 +217,8 @@ ADMIN-2/3(問題のあるユーザーを確認・利用停止) → ADMIN-5(食�
 | `/admin/ai-usage` | AI利用量(ユーザー別・機能別のトークン数・概算コスト) | 要管理者 |
 | `/admin/logs` | アプリログ(トレース・エラー・処理時間) | 要管理者 |
 | `/admin/game-cards` | 食材図鑑カードの作成・編集・削除(旬・読み仮名・レアリティ・豆知識・イラスト。ゲーム要素) | 要管理者 |
+| `/admin/game-gacha` | ガチャ確率設定(レアリティごとの重み・旬の倍率。ゲーム要素) | 要管理者 |
+| `/admin/game-quiz` | クイズ問題一覧(問題文・選択肢・正解・解説の参照専用。ゲーム要素) | 要管理者 |
 
 ## C. データベース仕様(現在のスキーマ)
 
@@ -235,10 +243,14 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `ai_quota_settings` | `id`(PK, boolean固定でシングルトン), `weekly_limit_usd`, `updated_at`, `updated_by` | ユーザー別AI利用上限の週間上限額(概算USD、全ユーザー共通)。閲覧は全ユーザー、変更は管理者限定 |
 | `ai_usage_quota` | `user_id`(PK, →profiles), `period_start`, `used_cost_usd`, `updated_at` | ユーザーごとの当該週のAI利用額。直接の読み書きはRPC(`check_ai_quota`/`consume_ai_quota`)経由。閲覧は本人と管理者のみ |
 | `game_cards` | `id`(PK), `ingredient_id`(→ingredients_master, unique), `rarity`(normal/rare/super_rare/legendary), `illustration_url`, `trivia_kids_text`, `trivia_adult_text`, `nutrition_summary`, `created_at` | ゲーム要素のカードマスタ(教育コンテンツ)。`/admin/game-cards`で管理者が手動作成。閲覧は全ユーザー、作成・編集・削除は管理者限定 |
-| `family_cards` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `owned_count`, `first_acquired_by`(→profiles, null可), `first_acquired_at`(null可) | 家族単位の図鑑(所持カード)。family_id+card_idでunique。フェーズ23時点はガチャ未実装のため常に空 |
-| `card_acquisitions` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `acquired_by`(→profiles), `acquired_at` | カード入手履歴(誰が・いつ入手したか)。フェーズ23時点はガチャ未実装のため常に空 |
+| `family_cards` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `owned_count`, `first_acquired_by`(→profiles, null可), `first_acquired_at`(null可) | 家族単位の図鑑(所持カード)。family_id+card_idでunique。ガチャで入手するたびに`owned_count`が増える(ダブりも枚数として蓄積。フェーズDの料理作成で消費する想定) |
+| `card_acquisitions` | `id`(PK), `family_id`(→families), `card_id`(→game_cards), `acquired_by`(→profiles), `acquired_at` | カード入手履歴(誰が・いつ入手したか)。ガチャを引くたびに1件追記する |
+| `family_game_profile` | `family_id`(PK, →families), `gacha_date`(date, 日本時間基準の日次リセット日), `draws_used_today`, `bonus_draws_today`(クイズ正解ボーナス用。フェーズCで加算する), `updated_at` | 家族単位のガチャ回数。閲覧は家族メンバーのみで、書き込みは`draw_gacha()`(SECURITY DEFINER)経由に限る(画面から回数を書き換えられない) |
+| `game_gacha_settings` | `id`(boolean PK固定の1行のみ), `weight_normal`/`weight_rare`/`weight_super_rare`/`weight_legendary`(レアリティ別の重み。初期値65/24/8/3), `season_multiplier`(旬の食材の倍率。初期値3), `updated_at`, `updated_by` | ガチャの出現確率設定(アプリ全体で1つ)。閲覧は全ユーザー、更新は管理者のみ(`/admin/game-gacha`) |
+| `quiz_questions` | `id`(PK), `category`(nutrition/season/origin/storage/cooking), `difficulty`(easy/normal/hard), `question_text`, `choices`(jsonb配列), `correct_index`, `explanation_text`, `related_ingredient_id`(→ingredients_master, null可), `created_at` | クイズ問題。正解が見えてしまうため**管理者のみ直接閲覧可**(一般ユーザーは`get_next_quiz()`経由で、正解の位置は返らない)。追加・修正はSQL Editorで行う。初期問題は`0025_game_quiz_seed.sql`(87問)→`0026`(正解位置の偏り是正)→`0027_game_quiz_replace_all.sql`(ユーザーが全問見直し、146問に総入れ替え。0025/0026は経緯として残すが内容は0027が現状)。問題文・選択肢・解説は「漢字{かんじ}」記法でふりがな付き(FuriganaTextで表示)。問題を追加するときは正解位置をA〜Dに散らす |
+| `quiz_attempts` | `id`(PK), `user_id`(→profiles), `question_id`(→quiz_questions), `is_correct`, `answered_at` | クイズの回答履歴(本人のみ閲覧可。書き込みは`answer_quiz()`経由に限る)。「1日の回答数」「同日の再出題防止」「未回答問題の優先出題」の判定に使う |
 
-主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)。
+主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)、`get_gacha_status()`(家族の今日のガチャ残り回数。基本3回+ボーナス-使用済み。日付が変わっていれば未使用として返す)/`draw_gacha()`(ガチャ1回分の処理。家族の行をロックして回数を判定→レアリティを重みで抽選→そのレアリティ内から旬の食材を`season_multiplier`倍の重みで1枚抽選→`family_cards`加算・`card_acquisitions`追記→使用回数を加算。カードが1枚も無いレアリティ・重み0のレアリティは抽選対象外)、`get_next_quiz()`(呼び出したユーザーの今日の回答数・正解数と、次の1問。日本時間で日付が変わると回数リセット。1日3問に達していれば問題はnull。同じ人・同じ日・同じ回答数の間は同じ問題を返す)/`answer_quiz()`(回答の判定・履歴記録・正解なら家族のガチャに+1回を1トランザクションで行う。上限超過・同日の同問題の再回答・不正な選択肢は例外で拒否)。
 
 マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0020_ingredient_reading.sql`(詳細は5〜30章の各フェーズ記録を参照)。
 
@@ -287,7 +299,7 @@ AIモデルの使い分け方針(フェーズ9で整理、フェーズ18で新�
 - 買い物リストの上書き保存(件数上限に達した場合)、作成・更新日時の表示
 - 家族ごとの「どの買い物でも必ず含める食材」設定
 - 家族ごとの「よく使うスーパー」設定(食材カテゴリの並び順を保存し、買い物リスト作成時に選択できる)
-- ゲーム要素・食材図鑑(食育×ゲームで大人も子供も楽しく学べることが目的。設計はgame-design.md参照。フェーズ23時点は図鑑閲覧基盤のみ実装〈`/game`〉。ガチャ・クイズ・料理作成・家族ランクは後続フェーズ)
+- ゲーム要素・食材図鑑(食育×ゲームで大人も子供も楽しく学べることが目的。設計はgame-design.md参照。フェーズ27時点は図鑑閲覧・ガチャ・クイズまで実装〈`/game`〉。料理作成・家族ランクは後続フェーズ)
 
 
 ---
