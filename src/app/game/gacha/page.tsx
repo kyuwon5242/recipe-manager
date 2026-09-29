@@ -23,11 +23,11 @@ export default async function GachaPage() {
         <h1 className="text-2xl font-bold">今日のガチャ</h1>
       </div>
       <p className="mt-2 text-sm text-gray-500">
-        家族みんなで1日{status.baseDraws}回まで引けます。誰が引いても同じ回数を使います。旬の食材ほど出やすく、めずらしいカードほど出にくくなっています。
+        あなたは1日{status.baseDraws}回まで引けます(家族の他のメンバーもそれぞれ別に{status.baseDraws}回引けます)。旬の食材ほど出やすく、めずらしいカードほど出にくくなっています。
       </p>
 
       <div className="mt-4 rounded-xl bg-white p-4 shadow-raised">
-        <p className="text-sm text-gray-500">今日の残り回数</p>
+        <p className="text-sm text-gray-500">あなたの今日の残り回数</p>
         <p className="mt-1 text-2xl font-bold">
           {status.remainingDraws} <span className="text-base font-normal text-gray-400">/ {status.baseDraws + status.bonusDraws} 回</span>
         </p>

@@ -64,7 +64,9 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
     throw new Error(`所持状況の取得に失敗しました: ${ownedError.message}`);
   }
 
-  const isOwned = (owned?.owned_count ?? 0) > 0;
+  // 「入手済み」は初回入手(first_acquired_at)の有無で判定する。料理作成でowned_countが
+  // 0になっても、一度埋めた図鑑欄の表示は消えない(game-design.md 4.2・4.4節)。
+  const isOwned = owned?.first_acquired_at != null;
 
   let acquiredByName: string | null = null;
   if (owned?.first_acquired_by) {

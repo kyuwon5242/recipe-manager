@@ -4,6 +4,7 @@ import { getCurrentFamilyId } from "@/lib/family/current";
 import { getGachaStatus } from "@/lib/game/gacha";
 import { getQuizStatus } from "@/lib/game/quiz";
 import { RARITY_BADGE_STYLES, RARITY_LABELS, type CardRarity } from "@/lib/game/cards";
+import { getFamilyRankStatus, MAX_DISH_COUNT } from "@/lib/game/rank";
 import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "食材図鑑" };
@@ -23,24 +24,31 @@ export default async function GamePage() {
   const supabase = await createClient();
   const familyId = await getCurrentFamilyId();
 
-  const [{ count: totalCards }, { count: ownedCards }, gachaStatus, quizStatus, { data: recent, error: recentError }] =
-    await Promise.all([
-      supabase.from("game_cards").select("id", { count: "exact", head: true }),
-      supabase
-        .from("family_cards")
-        .select("id", { count: "exact", head: true })
-        .eq("family_id", familyId)
-        .gt("owned_count", 0),
-      getGachaStatus(supabase, familyId),
-      getQuizStatus(supabase),
-      supabase
-        .from("card_acquisitions")
-        .select("id, acquired_at, profiles(display_name), game_cards(id, rarity, ingredients_master(name))")
-        .eq("family_id", familyId)
-        .order("acquired_at", { ascending: false })
-        .limit(5)
-        .returns<RecentAcquisitionRow[]>(),
-    ]);
+  const [
+    { count: totalCards },
+    { count: ownedCards },
+    { count: achievedDishes },
+    gachaStatus,
+    quizStatus,
+    { data: recent, error: recentError },
+  ] = await Promise.all([
+    supabase.from("game_cards").select("id", { count: "exact", head: true }),
+    supabase
+      .from("family_cards")
+      .select("id", { count: "exact", head: true })
+      .eq("family_id", familyId)
+      .not("first_acquired_at", "is", null),
+    supabase.from("family_dishes").select("id", { count: "exact", head: true }).eq("family_id", familyId),
+    getGachaStatus(supabase, familyId),
+    getQuizStatus(supabase),
+    supabase
+      .from("card_acquisitions")
+      .select("id, acquired_at, profiles(display_name), game_cards(id, rarity, ingredients_master(name))")
+      .eq("family_id", familyId)
+      .order("acquired_at", { ascending: false })
+      .limit(5)
+      .returns<RecentAcquisitionRow[]>(),
+  ]);
 
   if (recentError) {
     throw new Error(`直近の入手カードの取得に失敗しました: ${recentError.message}`);
@@ -48,6 +56,7 @@ export default async function GamePage() {
 
   const total = totalCards ?? 0;
   const owned = ownedCards ?? 0;
+  const rankStatus = getFamilyRankStatus(achievedDishes ?? 0);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -56,15 +65,34 @@ export default async function GamePage() {
         <h1 className="text-2xl font-bold">食材図鑑</h1>
       </div>
       <p className="mt-2 text-sm text-gray-500">
-        旬の食材カードを集めて、家族の図鑑を育てていく機能です。料理作成は準備中で、いまはクイズとガチャで図鑑を集められます。
+        旬の食材カードを集めて、家族の図鑑を育てていく機能です。集めたカードで料理を作ると、家族のランクが上がっていきます。
       </p>
 
       <div className="mt-6 rounded-xl bg-white p-4 shadow-raised">
+        <p className="text-sm text-gray-500">家族ランク</p>
+        <p className="mt-1 text-2xl font-bold">{rankStatus.rank.label}</p>
+        <p className="mt-1 text-xs text-gray-500">
+          達成 {rankStatus.achievedCount} / {MAX_DISH_COUNT}種
+          {rankStatus.nextRank
+            ? `・次の「${rankStatus.nextRank.label}」まであと${rankStatus.toNextRank}種`
+            : "・最上位に到達しています"}
+        </p>
+      </div>
+
+      <div className="mt-4 rounded-xl bg-white p-4 shadow-raised">
         <p className="text-sm text-gray-500">図鑑の進み具合</p>
         <p className="mt-1 text-2xl font-bold">
           {owned} <span className="text-base font-normal text-gray-400">/ {total} 枚</span>
         </p>
       </div>
+
+      <Link
+        href="/game/cook"
+        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
+      >
+        <p className="font-bold">🍳 料理を作る</p>
+        <p className="mt-1 text-xs text-gray-500">カードがそろったレシピで「料理を作る」を実行し、家族ランクを上げる</p>
+      </Link>
 
       <Link
         href="/game/gacha"
@@ -73,7 +101,7 @@ export default async function GamePage() {
         <p className="font-bold">🎁 今日のガチャ</p>
         <p className="mt-1 text-xs text-gray-500">
           {gachaStatus.remainingDraws > 0
-            ? `今日はあと${gachaStatus.remainingDraws}回引けます(家族みんなで共通の回数です)`
+            ? `あなたは今日あと${gachaStatus.remainingDraws}回引けます`
             : "今日のガチャはおしまいです。また明日引けます"}
         </p>
       </Link>

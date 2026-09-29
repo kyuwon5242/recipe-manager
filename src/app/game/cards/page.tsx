@@ -30,7 +30,7 @@ export default async function GameCardsPage() {
       .from("game_cards")
       .select("id, rarity, illustration_url, ingredients_master(name, reading, category, season_months)")
       .returns<CardRow[]>(),
-    supabase.from("family_cards").select("card_id, owned_count").eq("family_id", familyId),
+    supabase.from("family_cards").select("card_id, first_acquired_at").eq("family_id", familyId),
   ]);
 
   if (cardsError) {
@@ -40,7 +40,9 @@ export default async function GameCardsPage() {
     throw new Error(`所持カードの取得に失敗しました: ${ownedError.message}`);
   }
 
-  const ownedByCardId = new Map((owned ?? []).map((o) => [o.card_id, o.owned_count]));
+  // 「入手済み」は初回入手(first_acquired_at)の有無で判定する。料理作成でowned_countが
+  // 0になっても、一度埋めた図鑑欄の表示は消えない(game-design.md 4.2・4.4節)。
+  const acquiredCardIds = new Set((owned ?? []).filter((o) => o.first_acquired_at !== null).map((o) => o.card_id));
 
   const items = (cards ?? []).map((card) => ({
     id: card.id,
@@ -50,7 +52,7 @@ export default async function GameCardsPage() {
     reading: card.ingredients_master?.reading ?? null,
     category: card.ingredients_master?.category ?? UNCATEGORIZED_LABEL,
     seasonMonths: card.ingredients_master?.season_months ?? null,
-    ownedCount: ownedByCardId.get(card.id) ?? 0,
+    isAcquired: acquiredCardIds.has(card.id),
   }));
 
   const grouped = sortByCategoryOrder(items).reduce<Map<string, typeof items>>((map, item) => {
@@ -79,7 +81,7 @@ export default async function GameCardsPage() {
             </h2>
             <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
               {list.map((item) => {
-                const isOwned = item.ownedCount > 0;
+                const isOwned = item.isAcquired;
                 const src = isOwned ? resolveCardImageSrc(item.illustrationUrl) : null;
                 return (
                   <Link key={item.id} href={`/game/cards/${item.id}`} className="block transition hover:-translate-y-0.5">

@@ -226,19 +226,16 @@
 }
 
 /* クイズ採点中の演出(QuizGradingOverlay)。回答を送信してから結果が
-   返るまでの待ち時間を、買い物カートが棚を行き来する様子で表現する。
+   返るまでの待ち時間を、虫眼鏡が答案用紙の上を行き来して確認している様子で表現する。
    選択肢を押した瞬間に結果を先読みできてしまわないよう、答え合わせ中は
    画面をグレーアウトしてこの演出だけを見せる。 */
-.quiz-grading-cart {
-  display: inline-block;
-  animation: quiz-cart-shop 1.6s ease-in-out infinite;
+.quiz-grading-glass {
+  animation: quiz-grading-scan 1.4s ease-in-out infinite;
 }
-@keyframes quiz-cart-shop {
-  0%, 6% { transform: translateX(-56px) scaleX(1); }
-  44%, 50% { transform: translateX(56px) scaleX(1); }
-  56%, 94% { transform: translateX(56px) scaleX(-1); }
-  100% { transform: translateX(-56px) scaleX(-1); }
+@keyframes quiz-grading-scan {
+  0%, 100% { transform: translate(-16px, -8px) rotate(-10deg); }
+  50% { transform: translate(16px, 8px) rotate(10deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .quiz-grading-cart { animation: none; }
+  .quiz-grading-glass { animation: none; }
 }

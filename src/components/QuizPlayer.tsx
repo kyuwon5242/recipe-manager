@@ -84,7 +84,7 @@ export function QuizPlayer({
           </p>
           {result.bonusGranted ? (
             <p className="mt-1 rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
-              🎁 今日の{result.dailyLimit}問すべて正解!家族の今日のガチャが +1回 ふえました!
+              🎁 今日の{result.dailyLimit}問すべて正解!あなたの今日のガチャが +1回 ふえました!
             </p>
           ) : null}
           <div className="mt-3">
