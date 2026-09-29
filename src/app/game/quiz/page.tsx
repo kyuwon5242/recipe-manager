@@ -22,7 +22,7 @@ export default async function QuizPage() {
         <h1 className="text-2xl font-bold">今日のクイズ</h1>
       </div>
       <p className="mt-2 text-sm text-gray-500">
-        食材や栄養のクイズです。1人1日{status.dailyLimit}問まで挑戦でき、正解するたびに家族の今日のガチャが+1回ふえます。まちがえても解説が読めます。
+        食材や栄養のクイズです。1人1日{status.dailyLimit}問まで挑戦でき、{status.dailyLimit}問すべてに正解すると家族の今日のガチャが+1回ふえます。まちがえても解説が読めます。
       </p>
       <AiContentNotice>
         問題・選択肢・解説はAIが作成し、人が内容を確認したものです。まれに不正確な内容が含まれる場合があるため、参考情報としてご利用ください。

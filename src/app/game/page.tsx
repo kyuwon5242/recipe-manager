@@ -86,7 +86,7 @@ export default async function GamePage() {
         <p className="mt-1 text-xs text-gray-500">
           {quizStatus.answeredToday >= quizStatus.dailyLimit
             ? `今日の${quizStatus.dailyLimit}問は終わりました(${quizStatus.correctToday}問 正解)`
-            : `あなたは今日 ${quizStatus.answeredToday}/${quizStatus.dailyLimit}問 回答済み。正解するとガチャが+1回ふえます`}
+            : `あなたは今日 ${quizStatus.answeredToday}/${quizStatus.dailyLimit}問 回答済み。${quizStatus.dailyLimit}問全問正解でガチャが+1回ふえます`}
         </p>
       </Link>
 

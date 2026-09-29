@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { answerQuiz, type QuizAnswerState } from "@/app/game/quiz/actions";
 import { FuriganaText } from "@/components/FuriganaText";
+import { QuizGradingOverlay } from "@/components/QuizGradingOverlay";
 import {
   QUIZ_CATEGORY_LABELS,
   QUIZ_DIFFICULTY_LABELS,
@@ -29,7 +30,8 @@ export function QuizPlayer({
   const result = state.result;
 
   return (
-    <div className="mt-6 rounded-xl bg-white p-5 shadow-raised">
+    <div className="relative mt-6 rounded-xl bg-white p-5 shadow-raised">
+      {isPending ? <QuizGradingOverlay /> : null}
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <span className="rounded-full bg-gray-100 px-2 py-0.5">{QUIZ_CATEGORY_LABELS[question.category] ?? question.category}</span>
         <span className="rounded-full bg-gray-100 px-2 py-0.5">
@@ -82,7 +84,7 @@ export function QuizPlayer({
           </p>
           {result.bonusGranted ? (
             <p className="mt-1 rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
-              🎁 家族の今日のガチャが +1回 ふえました!
+              🎁 今日の{result.dailyLimit}問すべて正解!家族の今日のガチャが +1回 ふえました!
             </p>
           ) : null}
           <div className="mt-3">

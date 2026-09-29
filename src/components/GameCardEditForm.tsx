@@ -13,6 +13,7 @@ export type EditableCard = {
   category: string;
   rarity: CardRarity;
   illustrationUrl: string | null;
+  illustrationSrc: string | null;
   seasonMonths: number[] | null;
   reading: string | null;
   triviaKidsText: string | null;
@@ -53,9 +54,9 @@ export function GameCardEditForm({ card }: { card: EditableCard }) {
           <GameCardVisual
             category={card.category}
             rarity={card.rarity}
-            src={null}
+            src={card.illustrationSrc}
             name={card.name}
-            isOwned={false}
+            isOwned
             compact
             iconClassName="text-xl"
           />

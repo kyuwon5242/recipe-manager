@@ -5,6 +5,7 @@ import { GameCardCreateForm } from "@/components/GameCardCreateForm";
 import { GameCardEditForm, type EditableCard } from "@/components/GameCardEditForm";
 import { sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
 import type { CardRarity } from "@/lib/game/cards";
+import { resolveCardImageSrc } from "@/lib/game/card-image";
 
 export const metadata = { title: "カード管理" };
 
@@ -59,6 +60,7 @@ export default async function GameCardsAdminPage() {
     category: card.ingredients_master?.category ?? UNCATEGORIZED_LABEL,
     rarity: card.rarity,
     illustrationUrl: card.illustration_url,
+    illustrationSrc: resolveCardImageSrc(card.illustration_url),
     seasonMonths: card.ingredients_master?.season_months ?? null,
     reading: card.ingredients_master?.reading ?? null,
     triviaKidsText: card.trivia_kids_text,
