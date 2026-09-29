@@ -45,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 食材図鑑カードイラストの旧版バックアップ(アプリからは未参照。手元の控え用)
+/public/cards/bk/
