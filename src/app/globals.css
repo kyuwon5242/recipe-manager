@@ -30,6 +30,24 @@
   --shadow-raised: 0 1px 2px rgba(42, 26, 18, 0.05), 0 6px 16px rgba(42, 26, 18, 0.08);
 }
 
+/* ボタン・リンク全体に「押した感」を出すための既定スタイル。個別に
+   active:scale-*等を指定しているボタンはそちらが優先される(Tailwindの
+   utilitiesレイヤーは@layer baseより後に評価されるため、同じ要素に両方
+   当たる場合はutilities側が勝つ)。@layerで囲わずに書くと「レイヤー無し」
+   扱いになり逆にどのレイヤーより強くなってしまうため、必ずbaseに入れる。 */
+@layer base {
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 100ms ease;
+  }
+
+  a:active,
+  button:active {
+    transform: scale(0.97);
+  }
+}
+
 /* AI処理待ち(AIThinkingIndicator)用のアニメーション。マネージャーが
    考えながらメモ帳にペンを走らせている動きを表現する。 */
 @keyframes nod-think {

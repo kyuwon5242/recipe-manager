@@ -72,6 +72,8 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
         ))}
       </div>
 
+      <p className="mb-2 text-xs text-gray-400">並び順: 新しい順(登録日が新しいものから)</p>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
           type="text"
