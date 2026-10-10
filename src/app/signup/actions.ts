@@ -13,11 +13,12 @@ export async function signUpWithPassword(
   _prevState: SignupState,
   formData: FormData
 ): Promise<SignupState> {
+  const nickname = String(formData.get("nickname") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
-    return { error: "メールアドレスとパスワードを入力してください", message: null };
+  if (!nickname || !email || !password) {
+    return { error: "ニックネーム・メールアドレス・パスワードを入力してください", message: null };
   }
   if (password.length < 6) {
     return { error: "パスワードは6文字以上で入力してください", message: null };
@@ -32,7 +33,12 @@ export async function signUpWithPassword(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+    options: {
+      emailRedirectTo: `${origin}/auth/callback`,
+      // handle_new_user()トリガーがraw_user_meta_dataのfull_nameを
+      // display_nameとして読むため、ここに渡すだけでDB側の変更は不要。
+      data: { full_name: nickname },
+    },
   });
 
   if (error) {

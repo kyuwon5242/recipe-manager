@@ -3,10 +3,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { UsageScenarioBanner } from "@/components/UsageScenarioBanner";
+import { SeasonalIngredientsTicker, type SeasonalCardItem } from "@/components/SeasonalIngredientsTicker";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
 import { getAiQuotaStatus } from "@/lib/ai-usage/quota";
 import { getCurrentFamilyId } from "@/lib/family/current";
+import { currentJstMonth, isInSeasonMonth } from "@/lib/season";
+import { sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
+import { resolveCardImageSrc } from "@/lib/game/card-image";
+import type { CardRarity } from "@/lib/game/cards";
 import type { Zone } from "@/lib/zones";
 
 type LatestMealRow = {
@@ -15,6 +20,18 @@ type LatestMealRow = {
     servings: number | null;
     recipes: { id: string; title: string } | null;
   }[];
+};
+
+type SeasonalCardRow = {
+  id: string;
+  rarity: CardRarity;
+  illustration_url: string | null;
+  ingredients_master: {
+    name: string;
+    reading: string | null;
+    category: string | null;
+    season_months: number[] | null;
+  } | null;
 };
 
 const HELP_ITEMS = [
@@ -101,6 +118,47 @@ export default async function HomePage() {
       .map((r) => ({ id: r.recipes!.id, title: r.recipes!.title, servings: r.servings }));
   }
 
+  // 今が旬の食材カードをホームでアニメーション表示する(食材図鑑と同じ
+  // カードを再利用。未入手のものもシルエットで含める)。
+  const currentMonth = currentJstMonth();
+  let seasonalCards: SeasonalCardItem[] = [];
+  {
+    const { data: cards } = await supabase
+      .from("game_cards")
+      .select("id, rarity, illustration_url, ingredients_master(name, reading, category, season_months)")
+      .returns<SeasonalCardRow[]>();
+
+    const inSeason = (cards ?? []).filter((c) =>
+      isInSeasonMonth(c.ingredients_master?.season_months, currentMonth)
+    );
+
+    let acquiredCardIds = new Set<string>();
+    if (familyId && inSeason.length > 0) {
+      const { data: owned } = await supabase
+        .from("family_cards")
+        .select("card_id, first_acquired_at")
+        .eq("family_id", familyId);
+      acquiredCardIds = new Set(
+        (owned ?? []).filter((o) => o.first_acquired_at !== null).map((o) => o.card_id)
+      );
+    }
+
+    const mapped: SeasonalCardItem[] = inSeason.map((card) => {
+      const isOwned = acquiredCardIds.has(card.id);
+      return {
+        id: card.id,
+        rarity: card.rarity,
+        src: isOwned ? resolveCardImageSrc(card.illustration_url) : null,
+        name: card.ingredients_master?.name ?? "(不明な食材)",
+        reading: card.ingredients_master?.reading ?? null,
+        category: card.ingredients_master?.category ?? UNCATEGORIZED_LABEL,
+        seasonMonths: card.ingredients_master?.season_months ?? null,
+        isOwned,
+      };
+    });
+    seasonalCards = sortByCategoryOrder(mapped);
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="flex items-center gap-2">
@@ -108,6 +166,8 @@ export default async function HomePage() {
         <HelpPanel title="ホーム" items={HELP_ITEMS} />
       </div>
       {canUseAiFeatures ? <AiQuotaGauge status={quota} /> : null}
+
+      <SeasonalIngredientsTicker items={seasonalCards} />
 
       {latestMealRecipes.length > 0 ? (
         <div className="mt-4 rounded-xl bg-white p-4 shadow-raised">

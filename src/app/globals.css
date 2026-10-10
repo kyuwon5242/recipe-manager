@@ -61,6 +61,14 @@
   50% { transform: scale(1.15); }
 }
 
+/* ホームの「今が旬の食材」ティッカー(SeasonalIngredientsTicker)。
+   カード一覧を2回連続で並べておき、ちょうど半分(1周分)だけ左へ動かす
+   ことで、継ぎ目が見えないループになる。 */
+@keyframes seasonal-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 /* 食材図鑑カード(GameCardVisual)。
    - 縁取り・背景: カテゴリの色相(--h)と彩度係数(--k)で塗り分け、
      レアリティ(.n/.r/.s/.u)が上がるほど濃く・鮮やかにする

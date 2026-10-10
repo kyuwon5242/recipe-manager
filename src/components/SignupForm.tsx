@@ -12,6 +12,19 @@ export function SignupForm() {
     <form action={formAction} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700">
+          ニックネーム
+        </label>
+        <input
+          type="text"
+          name="nickname"
+          required
+          maxLength={20}
+          placeholder="ヘッダーに表示される名前です"
+          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
           メールアドレス
         </label>
         <input

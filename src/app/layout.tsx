@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "@/components/HeaderNav";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
 import { MealPlanTrayFab } from "@/components/MealPlanTrayFab";
+import { seasonalAppIcon } from "@/lib/season";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,6 +40,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   let isAdmin = false;
   let canUseMenuAgent = false;
   let canUseAiFeatures = false;
+  let displayName = "";
   if (user) {
     const { data } = await supabase
       .from("family_members")
@@ -51,12 +52,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("is_admin, can_use_menu_agent, can_use_ai_features")
+      .select("is_admin, can_use_menu_agent, can_use_ai_features, display_name")
       .eq("id", user.id)
       .maybeSingle();
     isAdmin = profile?.is_admin ?? false;
     canUseMenuAgent = profile?.can_use_menu_agent ?? false;
     canUseAiFeatures = isAdmin || (profile?.can_use_ai_features ?? false);
+    displayName = profile?.display_name ?? user.email ?? "";
   }
 
   return (
@@ -65,16 +67,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper font-sans text-gray-900">
-        <header className="border-b border-gray-200 bg-white">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
-              <Image
-                src="/manager-icon.png"
-                alt=""
-                width={36}
-                height={36}
-                className="h-9 w-9 rounded-full object-cover"
-              />
+        <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
+            <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl"
+              >
+                {seasonalAppIcon()}
+              </span>
               レシピマネージャー
             </Link>
             {user ? (
@@ -83,7 +84,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 isAdmin={isAdmin}
                 canUseMenuAgent={canUseMenuAgent}
                 canUseAiFeatures={canUseAiFeatures}
-                userEmail={user.email ?? ""}
+                displayName={displayName}
               />
             ) : null}
           </div>
