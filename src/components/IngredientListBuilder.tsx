@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   createShoppingList,
   getMyShoppingListsForOverwrite,
   type CreateShoppingListItemInput,
   type ShoppingListSummary,
 } from "@/app/shopping-list/actions";
-import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import {
   INGREDIENT_CATEGORIES,
@@ -27,7 +27,6 @@ import { formatDateTime } from "@/lib/format-date";
 
 const DEFAULT_CATEGORY = UNCATEGORIZED_LABEL;
 const CATEGORY_SUGGESTIONS = [...INGREDIENT_CATEGORIES, DEFAULT_CATEGORY];
-const RECIPE_TABS = ["すべて", ...GENRE_TABS] as const;
 
 type OwnedEntry = { checked: boolean; quantity: string };
 
@@ -204,7 +203,6 @@ export function IngredientListBuilder({
     return initial;
   });
   const [ownedState, setOwnedState] = useState<Record<string, OwnedEntry>>({});
-  const [activeTab, setActiveTab] = useState<(typeof RECIPE_TABS)[number]>("すべて");
   const [step, setStep] = useState<"select" | "draft">("select");
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
@@ -219,19 +217,8 @@ export function IngredientListBuilder({
 
   const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
   const activeCategoryOrder = selectedStore?.category_order ?? INGREDIENT_CATEGORIES;
-  // 献立トレイなどから選択済みの状態で遷移してきた場合は、冗長にならないよう
-  // レシピ選択欄を畳んでおく。何も選択されていない通常アクセス時は開いたまま。
-  const [showRecipePicker, setShowRecipePicker] = useState(initialSelections.length === 0);
 
   const currentStep: 1 | 2 | 3 = step === "draft" ? 3 : selectedRecipeIds.size > 0 ? 2 : 1;
-
-  const visibleRecipes = useMemo(() => {
-    const filtered =
-      activeTab === "すべて"
-        ? recipes
-        : recipes.filter((recipe) => bucketGenre(recipe.genre) === activeTab);
-    return [...filtered].sort((a, b) => Number(b.is_favorite) - Number(a.is_favorite));
-  }, [recipes, activeTab]);
 
   const neededIngredients = useMemo<NeededIngredient[]>(() => {
     const selected = recipes.filter((recipe) => selectedRecipeIds.has(recipe.id));
@@ -265,19 +252,10 @@ export function IngredientListBuilder({
     return order.map((category) => ({ category, items: grouped.get(category)! }));
   }, [neededIngredients]);
 
-  function toggleRecipe(id: string, recipe: BuilderRecipe) {
+  function removeRecipe(id: string) {
     setSelectedRecipeIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        setServingsTargets((prevTargets) =>
-          prevTargets[id] != null
-            ? prevTargets
-            : { ...prevTargets, [id]: recipe.servings && recipe.servings > 0 ? recipe.servings : 1 }
-        );
-      }
+      next.delete(id);
       return next;
     });
   }
@@ -631,119 +609,76 @@ export function IngredientListBuilder({
     <div className="mt-6 space-y-6">
       <StepIndicator current={currentStep} />
       <p className="text-xs text-gray-500">
-        作る予定のレシピを選ぶと、必要な食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
+        献立トレイに集めたレシピの食材がリアルタイムで表示されます。手持ちの食材はチェックし、分量が分かれば入力してください(未入力の場合は足りているものとして扱います)。
       </p>
       <div>
-        <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-700">レシピを選択</label>
-          {recipes.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowRecipePicker((v) => !v)}
-              className="text-xs text-brand-700 hover:underline"
-            >
-              {showRecipePicker ? "閉じる" : "変更する"}
-            </button>
-          ) : null}
-        </div>
+        <label className="block text-sm font-medium text-gray-700">献立トレイから選んだレシピ</label>
         {recipes.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">
-            レシピが登録されていません。先にレシピを登録してください。
+          <p className="mt-2 rounded-md border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+            レシピが選択されていません。
+            <Link href="/recipes" className="text-brand-700 hover:underline">
+              レシピ一覧
+            </Link>
+            などから献立トレイにレシピを追加し、トレイの「食材リストを作成へ進む」から来てください。
           </p>
-        ) : showRecipePicker ? (
-          <>
-            <div className="mt-2 flex flex-wrap gap-2 border-b border-gray-200">
-              {RECIPE_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`border-b-2 px-3 py-1.5 text-sm font-medium ${
-                    activeTab === tab
-                      ? "border-brand-600 text-brand-700"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 max-h-72 space-y-2 overflow-y-auto rounded-md border border-gray-200 bg-white p-3">
-              {visibleRecipes.length === 0 ? (
-                <p className="text-sm text-gray-500">該当するレシピがありません。</p>
-              ) : (
-                visibleRecipes.map((recipe) => {
-                  const isSelected = selectedRecipeIds.has(recipe.id);
-                  const color = getCategoryColor(recipe.category);
-                  return (
-                    <div key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
-                      <label className="flex flex-1 items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleRecipe(recipe.id, recipe)}
-                        />
-                        <span>
-                          {recipe.is_favorite ? (
-                            <span className="mr-1 text-red-500">♥</span>
-                          ) : null}
-                          {recipe.title}
-                          {recipe.category ? (
-                            <span
-                              className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${color.bg} ${color.text}`}
-                            >
-                              {recipe.category}
-                            </span>
-                          ) : null}
-                          {recipe.genre ? (
-                            <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
-                              {recipe.genre}
-                            </span>
-                          ) : null}
-                        </span>
-                      </label>
-                      {isSelected ? (
-                        <div className="flex shrink-0 items-center gap-1 text-xs text-gray-500">
-                          <span>人前</span>
-                          {(() => {
-                            const current =
-                              servingsTargets[recipe.id] ??
-                              (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
-                            const servingsOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-                            if (!servingsOptions.includes(current)) servingsOptions.push(current);
-                            return (
-                              <select
-                                value={current}
-                                onChange={(e) =>
-                                  setServingsTargets((prev) => ({
-                                    ...prev,
-                                    [recipe.id]: Number(e.target.value),
-                                  }))
-                                }
-                                className="rounded-md border border-gray-300 px-1 py-1 text-sm"
-                              >
-                                {servingsOptions.map((n) => (
-                                  <option key={n} value={n}>
-                                    {n}
-                                  </option>
-                                ))}
-                              </select>
-                            );
-                          })()}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
         ) : (
-          <p className="mt-2 text-sm text-gray-600">
-            {selectedRecipeIds.size > 0
-              ? `${selectedRecipeIds.size}件のレシピを選択中です。`
-              : "レシピが選択されていません。"}
-          </p>
+          <div className="mt-2 space-y-2 rounded-md border border-gray-200 bg-white p-3">
+            {recipes
+              .filter((recipe) => selectedRecipeIds.has(recipe.id))
+              .map((recipe) => {
+                const color = getCategoryColor(recipe.category);
+                const current =
+                  servingsTargets[recipe.id] ?? (recipe.servings && recipe.servings > 0 ? recipe.servings : 1);
+                const servingsOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+                if (!servingsOptions.includes(current)) servingsOptions.push(current);
+                return (
+                  <div key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex-1">
+                      {recipe.is_favorite ? <span className="mr-1 text-red-500">♥</span> : null}
+                      {recipe.title}
+                      {recipe.category ? (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${color.bg} ${color.text}`}
+                        >
+                          {recipe.category}
+                        </span>
+                      ) : null}
+                      {recipe.genre ? (
+                        <span className="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                          {recipe.genre}
+                        </span>
+                      ) : null}
+                    </span>
+                    <div className="flex shrink-0 items-center gap-1 text-xs text-gray-500">
+                      <span>人前</span>
+                      <select
+                        value={current}
+                        onChange={(e) =>
+                          setServingsTargets((prev) => ({
+                            ...prev,
+                            [recipe.id]: Number(e.target.value),
+                          }))
+                        }
+                        className="rounded-md border border-gray-300 px-1 py-1 text-sm"
+                      >
+                        {servingsOptions.map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeRecipe(recipe.id)}
+                      className="shrink-0 px-1 text-xs text-gray-400 hover:text-red-600"
+                    >
+                      外す
+                    </button>
+                  </div>
+                );
+              })}
+          </div>
         )}
       </div>
 

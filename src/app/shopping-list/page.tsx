@@ -12,7 +12,7 @@ export const metadata = { title: "食材リストを作成" };
 const HELP_ITEMS = [
   {
     label: "3ステップの流れ",
-    desc: "①作る予定のレシピを選ぶ→②手持ちの食材を確認する→③買い物リストを作成、の順に進みます。",
+    desc: "献立トレイに集めたレシピの人数を確認→手持ちの食材を確認する→買い物リストを作成、の順に進みます。",
   },
   {
     label: "スーパーの選択",
@@ -68,16 +68,25 @@ export default async function ShoppingListPage({
 
   const supabase = await createClient();
   const familyId = await getCurrentFamilyId();
-  const { data: recipes, error } = await supabase
-    .from("recipes")
-    .select(
-      "id, title, category, genre, servings, is_favorite, recipe_ingredients(quantity, unit, ingredients_master(name, category))"
-    )
-    .order("created_at", { ascending: false })
-    .returns<RecipeRow[]>();
+  const selectedIds = initialSelections.map((s) => s.id);
 
-  if (error) {
-    throw new Error(`レシピの取得に失敗しました: ${error.message}`);
+  // 食材リストの入口は献立トレイに統一されているため、全レシピを読み込む
+  // 必要はなく、トレイから渡された(選択済みの)レシピだけを取得すれば良い。
+  let recipes: RecipeRow[] = [];
+  if (selectedIds.length > 0) {
+    const { data, error } = await supabase
+      .from("recipes")
+      .select(
+        "id, title, category, genre, servings, is_favorite, recipe_ingredients(quantity, unit, ingredients_master(name, category))"
+      )
+      .in("id", selectedIds)
+      .returns<RecipeRow[]>();
+
+    if (error) {
+      throw new Error(`レシピの取得に失敗しました: ${error.message}`);
+    }
+    const byId = new Map(data.map((r) => [r.id, r]));
+    recipes = selectedIds.map((id) => byId.get(id)).filter((r): r is RecipeRow => Boolean(r));
   }
 
   const stores = await getFamilyStores(supabase, familyId);
@@ -93,7 +102,7 @@ export default async function ShoppingListPage({
     throw new Error(`デフォルト食材の取得に失敗しました: ${defaultItemsError.message}`);
   }
 
-  const builderRecipes: BuilderRecipe[] = (recipes ?? []).map((recipe) => ({
+  const builderRecipes: BuilderRecipe[] = recipes.map((recipe) => ({
     id: recipe.id,
     title: recipe.title,
     category: recipe.category,

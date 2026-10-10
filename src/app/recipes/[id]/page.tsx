@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteRecipeButton } from "@/components/DeleteRecipeButton";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { deleteRecipe } from "../actions";
 import type { Recipe } from "@/types/recipe";
 
@@ -50,8 +51,18 @@ export default async function RecipeDetailPage({
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <h1 className="text-3xl font-bold">{recipe.title}</h1>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <FavoriteButton recipeId={recipe.id} isFavorite={recipe.is_favorite} />
+          <AddToTrayButton
+            genre={recipe.genre}
+            assignment={{
+              kind: "existing",
+              recipeId: recipe.id,
+              title: recipe.title,
+              category: recipe.category,
+              genre: recipe.genre,
+            }}
+          />
           <Link
             href={`/recipes/${recipe.id}/edit`}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"

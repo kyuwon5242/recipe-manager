@@ -40,19 +40,14 @@ export default async function ShoppingListsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ZoneIcon zone="shopping" />
-          <h1 className="text-2xl font-bold">買い物リスト</h1>
-          <HelpPanel title="買い物リスト" items={HELP_ITEMS} />
-        </div>
-        <Link
-          href="/shopping-list"
-          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95"
-        >
-          + 食材リストを作成
-        </Link>
+      <div className="flex items-center gap-2">
+        <ZoneIcon zone="shopping" />
+        <h1 className="text-2xl font-bold">買い物リスト</h1>
+        <HelpPanel title="買い物リスト" items={HELP_ITEMS} />
       </div>
+      <p className="mt-1 text-xs text-gray-500">
+        新しく作るときは、献立トレイ(画面右下の🧺ボタン)から「食材リストを作成へ進む」を使ってください。
+      </p>
 
       {(lists ?? []).length === 0 ? (
         <p className="mt-6 text-gray-500">まだ買い物リストがありません。</p>

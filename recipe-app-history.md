@@ -1224,3 +1224,23 @@ game-design.mdのフェーズC(クイズ)を実装した。
 - **原因**: Next.js(v16.3.5)は本番ビルドでは、Server Action内で`throw`したエラーの`.message`をセキュリティ上の理由で伏せ、クライアント側には汎用的な"Minified React error"(digestのみ)として届ける(開発モードでは元のメッセージがそのまま届くため、ローカルでは再現しなかった)。`createShoppingList`(`src/app/shopping-list/actions.ts`)は買い物リストの件数上限(1人3件)に達した場合に`throw new Error(SHOPPING_LIST_LIMIT_MESSAGE)`していたが、呼び出し側の`IngredientListBuilder.tsx`・`MenuAgentChat.tsx`はこの`.message`をリテラル文字列比較(`=== SHOPPING_LIST_LIMIT_MESSAGE`)して上書き先選択UIを出すかどうかを分岐していた。本番では`.message`が常に伏せられた汎用文言になるため比較が成立せず、上書き選択UIが出ないまま謎のエラーだけが表示されていた。Vercel Function Logsで実際の原因(`SHOPPING_LIST_LIMIT_MESSAGE`のスロー)を確認して特定した。
 - **修正**: 件数上限は呼び出し側が処理を分岐する「想定内の状態」であるため、Next.js公式ドキュメント(`node_modules/next/dist/docs/01-app/01-getting-started/10-error-handling.md`)が推奨する「想定内のエラーはthrowせず戻り値でモデル化する」方針に合わせ、`createShoppingList`が上限到達時に`throw`する代わりに`{ limitReached: true }`を返すように変更(`CreateShoppingListResult`型を新設)。呼び出し側2箇所は`err.message`比較をやめ、戻り値の`limitReached`を見て上書き選択UIを出すように変更した。
 - **横展開確認**: 同種の「Server Actionのエラーメッセージをクライアント側で文字列比較する」パターンが他に無いか全体を検索。`game/gacha`・`game/quiz`・`game/cook`の各actionsにも`error.message.includes(...)`があったが、これらはいずれもSupabaseのRPC呼び出しエラーをServer Action内部(サーバー側)で判定し、結果を戻り値として返す設計(`useActionState`向けの推奨パターン)になっており、クライアント側に投げてから比較するものではないため本件の影響を受けないことを確認した。
+
+## 44. 献立トレイの使い勝手改善・食材リストへの導線統一(フェーズ29)
+
+ユーザーから計24件の改修依頼があり、関連の強さから「A: 献立トレイの使い勝手」「B: 食材リスト導線の簡素化」をまとめた最初のフェーズとして対応した(C以降は別フェーズで対応予定)。
+
+- **レシピ詳細から追加可能に**: `src/app/recipes/[id]/page.tsx`に`AddToTrayButton`を追加。レシピ一覧・レシピ詳細・AI提案(新レシピ提案/献立提案)のどこからでも献立トレイに追加できるようになった。
+- **追加済みの永続表示・再追加防止**: `useMealPlanTray()`に`isRecipeInTray(recipeId)`を追加。`AddToTrayButton`は登録済みレシピ(`kind: "existing"`)がすでにトレイに入っている間、ボタンが「✅ 追加済み」のまま固定表示され(従来は1.5秒で元に戻っていた)、クリックしても再追加されない。
+- **追加時のアニメーション**: `globals.css`に`tray-add-pop`(ボタン自身がポップする)・`tray-fab-bump`(画面右下の固定ボタンがバンプする)の2つの`@keyframes`を追加し、追加操作に視覚フィードバックを付けた。
+- **品目ごとの枠数指定を廃止・追加するだけ増える形に変更**: `TraySlot.assignment`を`null`を許容しない必須フィールドに変更し、`setCount`/`rebuildGenreSlots`(品目ごとの空枠を事前に確保する仕組み)を全廃。`addToTray`は品目ごとの上限(5、内部値として維持)に達していなければ常に新しい枠を末尾に追加するだけのシンプルな実装に変更した。
+- **トレイのリセットボタン追加**: `clearAll()`(既存だが未使用だった)を呼ぶ「リセット」ボタンをトレイUIに追加(確認ダイアログあり)。
+- **献立トレイを画面固定ボタン+モーダルに変更**: 各ページにサイドバーとして埋め込んでいた`MealPlanTrayPanel`/`WithMealPlanTray`を廃止し、`MealPlanTrayFab`(画面右下に固定表示、追加件数バッジ・バンプ演出付き)+`MealPlanTrayModal`(タップで開くモーダル)に置き換えた。`MealPlanTrayProvider`と共にルートレイアウト(`src/app/layout.tsx`)でログイン時のみ描画するため、`/recipes`・`/recipe-suggestions`・`/menu-plan`に限らず全ページから一貫してアクセスできる。
+- **食材リストへの入口を献立トレイに統一**: 以下の直接リンクをすべて廃止・変更した。
+  - ヘッダーメニュー(`HeaderNav.tsx`)から「食材リストを作成」を削除(「買い物リスト」〈確定済み一覧〉は維持)
+  - トップページ(`src/app/page.tsx`)のカード一覧から同リンクを削除
+  - `/shopping-lists`(買い物リスト一覧)の「+ 食材リストを作成」ボタンを削除し、献立トレイを使うよう案内文に変更
+  - `MealPlanForm.tsx`(献立提案)の「この献立で食材リストを作成」(`/shopping-list?recipes=...`への直接リンク)を、献立トレイにまとめて追加する「🧺 この献立をまとめて献立トレイに追加」ボタンに変更(各レシピカード個別の追加ボタンと役割が整理された)
+  - ホームのバナー(`UsageScenarioBanner.tsx`)も、献立トレイ経由を前提にした構成へ全面的に書き換え(下記)
+- **`/shopping-list`画面の簡素化**: `IngredientListBuilder.tsx`から全レシピのジャンル別タブ・チェックボックス一覧(レシピ選択UI)を削除し、献立トレイから渡された選択済みレシピのみを表示して人数調整・個別の「外す」操作だけができるように変更。サーバー側(`src/app/shopping-list/page.tsx`)も、全レシピを取得していたクエリを選択済みID(`?plan=`のid一覧)だけを取得するように変更し、取得件数を削減した。
+- **ホームバナーの再構成**: `UsageScenarioBanner.tsx`を、「献立トレイに集める→食材を確認する→買い物リストが完成」という共通の後半手順を`FIXED_STEPS`として固定し、気分に応じて変わる「入口」(レシピ一覧から選ぶ/AIに新レシピ提案/献立提案で考えてもらう)だけが数秒ごとに切り替わる構成に変更。固定の後半ステップは背景色(`bg-brand-50`)を変えて視覚的に区別した。急いでいるとき向けの「食材リストを作成を直接開く」シナリオは、直接リンクの廃止に伴い削除した。
+- **確認**: `npx tsc --noEmit`・`npx eslint src --max-warnings=0`がいずれもエラー0件(既存の無関係な警告2件のみ)であることを確認。ローカルプレビューで、レシピ一覧→追加→「追加済み」固定表示→レシピ詳細でも同じ状態が反映→トレイから削除で両方とも表示が戻る、トレイの削除・リセットUI、トレイ経由で`/shopping-list`に遷移し選択レシピのみ・人数調整付きで表示されること、ヘッダー・トップページ・買い物リスト一覧から直接リンクが消えたことを一通り確認した。

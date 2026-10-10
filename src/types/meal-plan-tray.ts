@@ -25,5 +25,5 @@ export type TraySlot = {
   id: string;
   genre: TrayGenre;
   servings: number;
-  assignment: TraySlotAssignment | null;
+  assignment: TraySlotAssignment;
 };

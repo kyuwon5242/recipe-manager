@@ -16,7 +16,7 @@ type LatestMealRow = {
 const HELP_ITEMS = [
   {
     label: "各カードについて",
-    desc: "レシピ一覧・新レシピ提案・献立提案・食材リストを作成・買い物リスト・家族設定など、機能ごとにカードから移動できます。",
+    desc: "レシピ一覧・新レシピ提案・献立提案・買い物リスト・家族設定など、機能ごとにカードから移動できます。食材リストの作成は、献立トレイ(画面右下のボタン)から進みます。",
   },
   {
     label: "上のバナーについて",
@@ -52,8 +52,7 @@ const CARDS: HomeCard[] = [
     desc: "品目ごとに献立をまとめて提案してもらう",
     aiGated: true,
   },
-  { href: "/shopping-list", zone: "shopping", icon: "📝", title: "食材リストを作成", desc: "献立から必要な食材を洗い出す" },
-  { href: "/shopping-lists", zone: "shopping", title: "買い物リスト", desc: "確定リストを家族と共有・チェック" },
+  { href: "/shopping-lists", zone: "shopping", icon: "📝", title: "買い物リスト", desc: "確定リストを家族と共有・チェック" },
   { href: "/family", zone: "family", title: "家族設定", desc: "招待コード・メンバー管理" },
   { href: "/game/gacha", zone: "game", icon: "🎁", title: "今日のガチャ", desc: "1日3回、旬の食材カードを引く" },
   { href: "/game", zone: "game", icon: "🃏", title: "食材図鑑", desc: "旬の食材カードを集めて家族の図鑑を育てる" },

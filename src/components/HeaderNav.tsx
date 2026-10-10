@@ -23,13 +23,6 @@ const NAV_ITEMS: { href: string; label: string; zone: Zone; icon?: string; title
     aiGated: true,
   },
   {
-    href: "/shopping-list",
-    label: "食材リストを作成",
-    zone: "shopping",
-    icon: "📝",
-    title: "作る予定のレシピから、必要な食材を洗い出す",
-  },
-  {
     href: "/shopping-lists",
     label: "買い物リスト",
     zone: "shopping",

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RecipeListClient } from "@/components/RecipeListClient";
-import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 
@@ -53,7 +52,7 @@ export default async function RecipesPage() {
   }));
 
   return (
-    <WithMealPlanTray maxWidth="max-w-4xl">
+    <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ZoneIcon zone="recipe" />
@@ -68,6 +67,6 @@ export default async function RecipesPage() {
         </Link>
       </div>
       <RecipeListClient recipes={items} />
-    </WithMealPlanTray>
+    </div>
   );
 }

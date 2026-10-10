@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "@/components/HeaderNav";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
+import { MealPlanTrayFab } from "@/components/MealPlanTrayFab";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -88,7 +89,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="flex-1">
-          <MealPlanTrayProvider>{children}</MealPlanTrayProvider>
+          <MealPlanTrayProvider>
+            {children}
+            {user ? <MealPlanTrayFab /> : null}
+          </MealPlanTrayProvider>
         </main>
       </body>
     </html>

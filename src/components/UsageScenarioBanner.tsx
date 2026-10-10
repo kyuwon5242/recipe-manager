@@ -3,44 +3,30 @@
 import { useEffect, useState } from "react";
 
 type ScenarioStep = { icon: string; label: string };
-type Scenario = { caption: string; steps: ScenarioStep[] };
+type ScenarioPrefix = { caption: string; steps: ScenarioStep[] };
 
-// 「1つの正解フロー」ではなく、状況に応じた使い方の例を複数見せるための
-// シナリオ集。数秒ごとに自動で切り替わるバナーとして表示する。
-const SCENARIOS: Scenario[] = [
+// 献立トレイに集めた後の手順(トレイ→食材を確認→買い物リストが完成)は
+// どの入口から来ても共通なので、末尾の固定ステップ(FIXED_STEPS)として
+// 1本化し、気分に応じて変わる「入口」だけを数秒ごとに切り替える。
+const PREFIXES: ScenarioPrefix[] = [
   {
     caption: "作るものが決まっているときは",
-    steps: [
-      { icon: "🍳", label: "レシピを選ぶ" },
-      { icon: "🧺", label: "献立トレイに集める" },
-      { icon: "📝", label: "食材を確認する" },
-      { icon: "🛒", label: "買い物リストが完成" },
-    ],
+    steps: [{ icon: "🍳", label: "レシピ一覧・詳細から選ぶ" }],
   },
   {
     caption: "何を作るか迷ったときは",
-    steps: [
-      { icon: "✨", label: "AIに新レシピを提案してもらう" },
-      { icon: "🧺", label: "気に入ったら献立トレイへ" },
-      { icon: "🛒", label: "買い物リストが完成" },
-    ],
+    steps: [{ icon: "✨", label: "AIに新レシピを提案してもらう" }],
   },
   {
     caption: "献立を決めたいときは",
-    steps: [
-      { icon: "🍽️", label: "献立提案で品目ごとに考えてもらう" },
-      { icon: "🧺", label: "献立トレイへ" },
-      { icon: "🛒", label: "買い物リストが完成" },
-    ],
+    steps: [{ icon: "🍽️", label: "献立提案で品目ごとに考えてもらう" }],
   },
-  {
-    caption: "とにかく急いでいるときは",
-    steps: [
-      { icon: "📝", label: "食材リストを作成を開く" },
-      { icon: "🍳", label: "レシピにチェックを入れる" },
-      { icon: "🛒", label: "次に買い物リストを作成" },
-    ],
-  },
+];
+
+const FIXED_STEPS: ScenarioStep[] = [
+  { icon: "🧺", label: "献立トレイに集める" },
+  { icon: "📝", label: "食材を確認する" },
+  { icon: "🛒", label: "買い物リストが完成" },
 ];
 
 const INTERVAL_MS = 5000;
@@ -50,48 +36,60 @@ export function UsageScenarioBanner() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % SCENARIOS.length);
+      setIndex((i) => (i + 1) % PREFIXES.length);
     }, INTERVAL_MS);
     return () => clearInterval(timer);
   }, []);
 
-  const scenario = SCENARIOS[index];
+  const prefix = PREFIXES[index];
+  const steps = [...prefix.steps, ...FIXED_STEPS];
 
   return (
     <div
       className="mt-4 rounded-xl bg-white p-4 shadow-raised"
-      title="状況に応じた使い方の例です(数秒で切り替わります)"
+      title="状況に応じた入口の例です(数秒で切り替わります)。献立トレイに集めた後の手順は共通です。"
     >
       <div key={index} style={{ animation: "banner-fade 0.4s ease" }}>
-        <p className="text-xs font-semibold text-brand-700">{scenario.caption}</p>
+        <p className="text-xs font-semibold text-brand-700">{prefix.caption}</p>
         <div className="mt-2 flex flex-col items-stretch gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1 sm:gap-y-2">
-          {scenario.steps.map((step, i) => (
-            <div key={step.label} className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:gap-1">
-              <div className="flex items-center gap-2 rounded-lg bg-paper px-3 py-2">
-                <span aria-hidden="true" className="text-lg">
-                  {step.icon}
-                </span>
-                <span className="text-xs font-medium text-gray-700">{step.label}</span>
+          {steps.map((step, i) => {
+            const isFixed = i >= prefix.steps.length;
+            return (
+              <div
+                key={`${step.label}-${i}`}
+                className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:gap-1"
+              >
+                <div
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
+                    isFixed ? "bg-brand-50" : "bg-paper"
+                  }`}
+                  title={isFixed ? "ここからは共通の手順です" : undefined}
+                >
+                  <span aria-hidden="true" className="text-lg">
+                    {step.icon}
+                  </span>
+                  <span className="text-xs font-medium text-gray-700">{step.label}</span>
+                </div>
+                {i < steps.length - 1 ? (
+                  <span aria-hidden="true" className="flex justify-center text-gray-300 sm:px-1">
+                    <span className="sm:hidden">↓</span>
+                    <span className="hidden sm:inline">→</span>
+                  </span>
+                ) : null}
               </div>
-              {i < scenario.steps.length - 1 ? (
-                <span aria-hidden="true" className="flex justify-center text-gray-300 sm:px-1">
-                  <span className="sm:hidden">↓</span>
-                  <span className="hidden sm:inline">→</span>
-                </span>
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       <div className="mt-3 flex justify-center gap-1.5">
-        {SCENARIOS.map((s, i) => (
+        {PREFIXES.map((p, i) => (
           <button
-            key={s.caption}
+            key={p.caption}
             type="button"
             onClick={() => setIndex(i)}
-            title={s.caption}
-            aria-label={`${i + 1}番目の使い方を表示`}
+            title={p.caption}
+            aria-label={`${i + 1}番目の入口を表示`}
             className={`h-1.5 rounded-full transition-all ${
               i === index ? "w-5 bg-brand-500" : "w-1.5 bg-gray-200 hover:bg-gray-300"
             }`}

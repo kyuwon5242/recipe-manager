@@ -1,5 +1,4 @@
 import { RecipeSuggestionForm } from "@/components/RecipeSuggestionForm";
-import { WithMealPlanTray } from "@/components/WithMealPlanTray";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
 import { AiQuotaGauge } from "@/components/AiQuotaGauge";
@@ -34,7 +33,7 @@ export default async function RecipeSuggestionsPage() {
   const quota = canUseAi ? await getAiQuotaStatus(supabase) : null;
 
   return (
-    <WithMealPlanTray>
+    <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center gap-2">
         <ZoneIcon zone="ai" />
         <h1 className="text-2xl font-bold">新レシピを提案してもらう</h1>
@@ -54,6 +53,6 @@ export default async function RecipeSuggestionsPage() {
       ) : (
         <AiFeatureLockedNotice />
       )}
-    </WithMealPlanTray>
+    </div>
   );
 }

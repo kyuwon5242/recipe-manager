@@ -1,24 +1,38 @@
 "use client";
 
-import { useActionState, useMemo } from "react";
-import Link from "next/link";
+import { useActionState, useMemo, useState } from "react";
 import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
 import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
 import { suggestMealPlan, type MealPlanState } from "@/app/menu-plan/actions";
+import { useMealPlanTray } from "@/lib/meal-plan-tray/context";
+import { toTrayGenre } from "@/types/meal-plan-tray";
 
 const initialState: MealPlanState = { result: null, error: null };
 const SLOT_GENRES = ["主食", "主菜", "副菜", "汁物"] as const;
 
 export function MealPlanForm() {
   const [state, formAction, isPending] = useActionState(suggestMealPlan, initialState);
+  const { addToTray } = useMealPlanTray();
+  const [addedAll, setAddedAll] = useState(false);
 
-  const existingIds = useMemo(
-    () =>
-      (state.result?.slots ?? [])
-        .filter((s) => s.kind === "existing")
-        .map((s) => s.recipeId),
+  const existingSlots = useMemo(
+    () => (state.result?.slots ?? []).filter((s) => s.kind === "existing"),
     [state.result]
   );
+
+  function handleAddAllToTray() {
+    for (const slot of existingSlots) {
+      const genre = slot.slot.replace(/\d+$/, "");
+      addToTray(toTrayGenre(genre), {
+        kind: "existing",
+        recipeId: slot.recipeId,
+        title: slot.title,
+        category: null,
+        genre,
+      });
+    }
+    setAddedAll(true);
+  }
 
   return (
     <div className="mt-6 space-y-6">
@@ -104,13 +118,21 @@ export function MealPlanForm() {
             ))}
           </ul>
 
-          {existingIds.length > 0 ? (
-            <Link
-              href={`/shopping-list?recipes=${existingIds.join(",")}`}
-              className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95"
-            >
-              この献立で食材リストを作成
-            </Link>
+          {existingSlots.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                onClick={handleAddAllToTray}
+                className="inline-block rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95"
+              >
+                🧺 この献立をまとめて献立トレイに追加
+              </button>
+              {addedAll ? (
+                <p className="mt-2 text-xs text-brand-700">
+                  献立トレイに追加しました。画面右下の「献立トレイ」から食材リスト作成へ進めます。
+                </p>
+              ) : null}
+            </div>
           ) : (
             <p className="text-sm text-gray-500">
               該当する登録済みレシピが見つかりませんでした。レシピを登録してから再度お試しください。
