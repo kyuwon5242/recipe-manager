@@ -88,11 +88,6 @@ export function FamilyDefaultItemsSettings({
 
       {isOwner ? (
         <>
-          <datalist id="default-item-category-suggestions">
-            {CATEGORY_SUGGESTIONS.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
               type="text"
@@ -115,14 +110,17 @@ export function FamilyDefaultItemsSettings({
               placeholder="単位(任意)"
               className="w-20 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
             />
-            <input
-              type="text"
-              list="default-item-category-suggestions"
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="カテゴリ"
               className="w-28 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-            />
+            >
+              {CATEGORY_SUGGESTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={handleAdd}
