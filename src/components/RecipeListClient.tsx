@@ -38,19 +38,25 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
 
   const filtered = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    return recipes.filter((recipe) => {
-      if (activeTab !== "すべて" && bucketGenre(recipe.genre) !== activeTab) return false;
-      if (categoryFilter !== "すべて" && recipe.category !== categoryFilter) return false;
-      if (favoriteOnly && !recipe.is_favorite) return false;
-      if (query) {
-        const titleMatch = recipe.title.toLowerCase().includes(query);
-        const ingredientMatch = recipe.ingredientNames.some((name) =>
-          name.toLowerCase().includes(query)
-        );
-        if (!titleMatch && !ingredientMatch) return false;
-      }
-      return true;
-    });
+    return recipes
+      .filter((recipe) => {
+        if (activeTab !== "すべて" && bucketGenre(recipe.genre) !== activeTab) return false;
+        if (categoryFilter !== "すべて" && recipe.category !== categoryFilter) return false;
+        if (favoriteOnly && !recipe.is_favorite) return false;
+        if (query) {
+          const titleMatch = recipe.title.toLowerCase().includes(query);
+          const ingredientMatch = recipe.ingredientNames.some((name) =>
+            name.toLowerCase().includes(query)
+          );
+          if (!titleMatch && !ingredientMatch) return false;
+        }
+        return true;
+      })
+      // お気に入りを先頭にまとめ、その中では名前のひらがな順(50音順)で並べる。
+      .sort((a, b) => {
+        if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1;
+        return a.title.localeCompare(b.title, "ja");
+      });
   }, [recipes, activeTab, categoryFilter, favoriteOnly, searchText]);
 
   return (
@@ -72,7 +78,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
         ))}
       </div>
 
-      <p className="mb-2 text-xs text-gray-400">並び順: 新しい順(登録日が新しいものから)</p>
+      <p className="mb-2 text-xs text-gray-400">並び順: お気に入り優先・名前順(ひらがな順)</p>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
