@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { sortByCategoryOrder } from "@/lib/ingredients/categories";
-import { MAX_LISTS_PER_PERSON, SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
+import { MAX_LISTS_PER_PERSON } from "@/lib/shopping/messages";
 
 export type CreateShoppingListItemInput = {
   name: string;
@@ -89,10 +89,16 @@ export async function getMyShoppingListsForOverwrite(): Promise<ShoppingListSumm
   }));
 }
 
+// 本番ビルドではServer Actionからthrowしたエラーの.messageが伏せられ、
+// 汎用的な"Minified React error"に置き換わってしまう(開発モードでしか
+// 元のメッセージが届かない)。件数上限は呼び出し側が分岐に使う想定内の
+// 状態なので、throwではなく戻り値として返す。
+export type CreateShoppingListResult = { limitReached: true } | undefined;
+
 export async function createShoppingList(
   items: CreateShoppingListItemInput[],
   options: CreateShoppingListOptions = {}
-) {
+): Promise<CreateShoppingListResult> {
   if (items.length === 0) {
     throw new Error("食材リストが空です");
   }
@@ -182,7 +188,7 @@ export async function createShoppingList(
       throw new Error(`買い物リスト件数の確認に失敗しました: ${countError.message}`);
     }
     if ((count ?? 0) >= MAX_LISTS_PER_PERSON) {
-      throw new Error(SHOPPING_LIST_LIMIT_MESSAGE);
+      return { limitReached: true };
     }
 
     const { data: list, error: listError } = await supabase

@@ -7,7 +7,6 @@ import {
   type CreateShoppingListItemInput,
   type ShoppingListSummary,
 } from "@/app/shopping-list/actions";
-import { SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import {
@@ -362,13 +361,11 @@ export function IngredientListBuilder({
   function submitShoppingList(items: CreateShoppingListItemInput[]) {
     startConfirm(async () => {
       try {
-        await createShoppingList(items, {
+        const result = await createShoppingList(items, {
           storeId: selectedStoreId || null,
           recipeIds: Array.from(selectedRecipeIds),
         });
-      } catch (err) {
-        if (isRedirectError(err)) throw err;
-        if (err instanceof Error && err.message === SHOPPING_LIST_LIMIT_MESSAGE) {
+        if (result?.limitReached) {
           setPendingItems(items);
           startLoadOverwrite(async () => {
             try {
@@ -378,8 +375,9 @@ export function IngredientListBuilder({
               setConfirmError(loadErr instanceof Error ? loadErr.message : "取得に失敗しました");
             }
           });
-          return;
         }
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
         setConfirmError(err instanceof Error ? err.message : "登録に失敗しました");
       }
     });

@@ -8,7 +8,6 @@ import {
   getMyShoppingListsForOverwrite,
   type ShoppingListSummary,
 } from "@/app/shopping-list/actions";
-import { SHOPPING_LIST_LIMIT_MESSAGE } from "@/lib/shopping/messages";
 import { categoryIcon } from "@/lib/ingredients/categories";
 import {
   PLAN_SLOTS,
@@ -267,7 +266,7 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
           currentPlan = await registerPendingIdeas(currentPlan);
           setPlan(currentPlan);
         }
-        await createShoppingList(
+        const result = await createShoppingList(
           latestShoppingDraft.map((item) => ({
             name: item.name,
             quantity: item.quantity,
@@ -279,9 +278,7 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
             recipeIds: currentPlan.map((item) => item.recipeId).filter((id): id is string => Boolean(id)),
           }
         );
-      } catch (err) {
-        if (isRedirectError(err)) throw err;
-        if (err instanceof Error && err.message === SHOPPING_LIST_LIMIT_MESSAGE) {
+        if (result?.limitReached) {
           startLoadOverwrite(async () => {
             try {
               const lists = await getMyShoppingListsForOverwrite();
@@ -290,8 +287,9 @@ export function MenuAgentChat({ stores = [] }: { stores?: FamilyStore[] }) {
               setError(loadErr instanceof Error ? loadErr.message : "取得に失敗しました");
             }
           });
-          return;
         }
+      } catch (err) {
+        if (isRedirectError(err)) throw err;
         setError(err instanceof Error ? err.message : "買い物リストの確定に失敗しました");
       }
     });

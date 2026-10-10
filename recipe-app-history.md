@@ -1216,3 +1216,11 @@ game-design.mdのフェーズC(クイズ)を実装した。
 - **スーパーごとのカテゴリ並び替えを「確定」ボタン方式に変更**: `FamilyStoreSettings.tsx`は従来、↑↓ボタンを押すたびに`updateFamilyStoreCategoryOrder`を呼んで毎回保存していた。並び替え操作をローカル state のみで完結させ、保存前の状態と異なる(dirty)場合のみ活性化する「並び順を確定」ボタンを押したときだけ保存するように変更。dirty中は「元に戻す」で保存前の並びに戻せる。
 - **スマホでの長押しドラッグ並び替えを追加**: 新規ライブラリは追加せず、Pointer Events(`onPointerDown`/`onPointerMove`/`onPointerUp`)のみで実装。カテゴリ行の⠿ハンドルを約350ms長押しすると並び替えモードが有効になり(長押し判定前に8px以上動いた場合はスクロールとみなしキャンセル)、ドラッグ中は指の位置と各行の中点を比較して配列を並べ替える。↑↓ボタンは従来通り残し、PCでも使える手段として併存させた。
 - **実機確認**: ブラウザのモバイル幅(375px)エミュレーションで、カテゴリ選択がネイティブ`<select>`として選択肢を表示すること、↑↓クリックでは保存リクエストが発生せず「確定」を押したときだけ保存されリロード後も順序が維持されること、を確認した(Pointer Eventsによる実際のタッチ操作の確認は自動テスト環境の制約上、コードレビューとロジック確認に留めた)。
+
+## 43. 買い物リスト作成時「Minified React error #441」になり確定できない不具合の修正
+
+ユーザーから「食材リスト作成→買い物リスト確定で謎のエラーが出て登録できない」と報告があった。
+
+- **原因**: Next.js(v16.3.5)は本番ビルドでは、Server Action内で`throw`したエラーの`.message`をセキュリティ上の理由で伏せ、クライアント側には汎用的な"Minified React error"(digestのみ)として届ける(開発モードでは元のメッセージがそのまま届くため、ローカルでは再現しなかった)。`createShoppingList`(`src/app/shopping-list/actions.ts`)は買い物リストの件数上限(1人3件)に達した場合に`throw new Error(SHOPPING_LIST_LIMIT_MESSAGE)`していたが、呼び出し側の`IngredientListBuilder.tsx`・`MenuAgentChat.tsx`はこの`.message`をリテラル文字列比較(`=== SHOPPING_LIST_LIMIT_MESSAGE`)して上書き先選択UIを出すかどうかを分岐していた。本番では`.message`が常に伏せられた汎用文言になるため比較が成立せず、上書き選択UIが出ないまま謎のエラーだけが表示されていた。Vercel Function Logsで実際の原因(`SHOPPING_LIST_LIMIT_MESSAGE`のスロー)を確認して特定した。
+- **修正**: 件数上限は呼び出し側が処理を分岐する「想定内の状態」であるため、Next.js公式ドキュメント(`node_modules/next/dist/docs/01-app/01-getting-started/10-error-handling.md`)が推奨する「想定内のエラーはthrowせず戻り値でモデル化する」方針に合わせ、`createShoppingList`が上限到達時に`throw`する代わりに`{ limitReached: true }`を返すように変更(`CreateShoppingListResult`型を新設)。呼び出し側2箇所は`err.message`比較をやめ、戻り値の`limitReached`を見て上書き選択UIを出すように変更した。
+- **横展開確認**: 同種の「Server Actionのエラーメッセージをクライアント側で文字列比較する」パターンが他に無いか全体を検索。`game/gacha`・`game/quiz`・`game/cook`の各actionsにも`error.message.includes(...)`があったが、これらはいずれもSupabaseのRPC呼び出しエラーをServer Action内部(サーバー側)で判定し、結果を戻り値として返す設計(`useActionState`向けの推奨パターン)になっており、クライアント側に投げてから比較するものではないため本件の影響を受けないことを確認した。
