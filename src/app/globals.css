@@ -61,6 +61,51 @@
   50% { transform: scale(1.15); }
 }
 
+/* ヘッダー背景の季節パーティクル(SeasonalHeaderParticles)。桜・落ち葉・雪は
+   上から下へゆっくり降りながら左右に揺れ・回転する。夏は降らせず、その場で
+   明滅する泡(🫧)にして一年中「降らせる」演出に単調にならないようにしている。 */
+.header-particle {
+  position: absolute;
+  display: inline-block;
+  line-height: 1;
+  will-change: transform, opacity;
+}
+
+.header-particle-fall {
+  animation-name: header-particle-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0;
+}
+
+.header-particle-twinkle {
+  animation-name: header-particle-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes header-particle-fall {
+  0% { top: -10%; opacity: 0; transform: translateX(0) rotate(0deg); }
+  15% { opacity: 0.5; }
+  85% { opacity: 0.5; }
+  100% { top: 115%; opacity: 0; transform: translateX(var(--drift, 12px)) rotate(var(--spin, 60deg)); }
+}
+
+@keyframes header-particle-twinkle {
+  0%, 100% { opacity: 0.12; transform: scale(0.85); }
+  50% { opacity: 0.45; transform: scale(1.05); }
+}
+
+/* 動きを抑えたい利用者向けに、ヘッダーのパーティクルはアニメーションを止めて
+   薄い静止表示にする。 */
+@media (prefers-reduced-motion: reduce) {
+  .header-particle-fall,
+  .header-particle-twinkle {
+    animation: none;
+    opacity: 0.25;
+  }
+}
+
 /* ホームの「今が旬の食材」ティッカー(SeasonalIngredientsTicker)。
    カード一覧を2回連続で並べておき、ちょうど半分(1周分)だけ左へ動かす
    ことで、継ぎ目が見えないループになる。 */
