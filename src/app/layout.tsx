@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "@/components/HeaderNav";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
 import { MealPlanTrayFab } from "@/components/MealPlanTrayFab";
-import { seasonalAppIcon } from "@/lib/season";
+import { seasonalHeaderClass } from "@/lib/season";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -67,15 +68,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper font-sans text-gray-900">
-        <header className="sticky top-0 z-30 border-b border-gray-200 bg-white">
+        <header className={`sticky top-0 z-30 border-b border-gray-200 ${seasonalHeaderClass()}`}>
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
-              <span
-                aria-hidden="true"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xl"
-              >
-                {seasonalAppIcon()}
-              </span>
+              <Image
+                src="/manager-icon.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-full object-cover"
+              />
               レシピマネージャー
             </Link>
             {user ? (

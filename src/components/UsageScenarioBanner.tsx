@@ -47,11 +47,14 @@ export function UsageScenarioBanner() {
     return () => clearInterval(timer);
   }, []);
 
-  // indexが変わったら(自動切り替え・ドットタップのどちらでも)該当スライドへスクロールする
+  // indexが変わったら(自動切り替え・ドットタップのどちらでも)該当スライドへ
+  // スクロールする。scrollIntoView()は祖先要素(ページ全体)の縦スクロール位置
+  // まで動かしてしまうことがあるため、横スクロール用コンテナ自身のscrollLeft
+  // だけを直接動かす(ページのスクロール位置には一切触れない)。
   useEffect(() => {
     const el = scrollerRef.current;
-    const slide = el?.children[index] as HTMLElement | undefined;
-    slide?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    if (!el) return;
+    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
   }, [index]);
 
   // スマホでの横スワイプで止まった位置から、一番近いスライドをindexに反映する
