@@ -69,7 +69,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper font-sans text-gray-900">
-        <header className={`sticky top-0 z-30 overflow-hidden border-b border-gray-200 ${seasonalHeaderClass()}`}>
+        <header className={`sticky top-0 z-30 border-b border-gray-200 ${seasonalHeaderClass()}`}>
           <SeasonalHeaderParticles />
           <div className="relative z-10 mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3">
             <Link href="/" className="flex shrink-0 items-center gap-2 text-lg font-bold">
