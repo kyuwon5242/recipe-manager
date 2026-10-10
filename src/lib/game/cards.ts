@@ -81,7 +81,7 @@ export function categoryCardHue(category: string): CategoryCardHue {
 }
 
 export function monthsLabel(months: number[] | null): string {
-  if (!months || months.length === 0) return "通年・不明";
+  if (!months || months.length === 0) return "通年";
   return months
     .slice()
     .sort((a, b) => a - b)

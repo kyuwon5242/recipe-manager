@@ -84,9 +84,14 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">
-      <Link href="/game/cards" className="text-sm text-brand-700 hover:underline">
-        ← 図鑑一覧に戻る
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link href="/game/cards" className="text-sm text-brand-700 hover:underline">
+          ← 図鑑一覧に戻る
+        </Link>
+        <Link href="/game/gacha" className="text-sm text-brand-700 hover:underline">
+          🎁 ガチャを引く
+        </Link>
+      </div>
 
       <div className="mx-auto mt-4 w-64 max-w-full">
         <GameCardVisual
