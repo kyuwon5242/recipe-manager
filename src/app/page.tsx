@@ -10,7 +10,11 @@ import { getCurrentFamilyId } from "@/lib/family/current";
 import type { Zone } from "@/lib/zones";
 
 type LatestMealRow = {
-  shopping_list_recipes: { position: number; recipes: { id: string; title: string } | null }[];
+  shopping_list_recipes: {
+    position: number;
+    servings: number | null;
+    recipes: { id: string; title: string } | null;
+  }[];
 };
 
 const HELP_ITEMS = [
@@ -80,11 +84,11 @@ export default async function HomePage() {
   const visibleCards = CARDS.filter((card) => !card.aiGated || canUseAiFeatures);
 
   const familyId = await getCurrentFamilyId().catch(() => null);
-  let latestMealRecipes: { id: string; title: string }[] = [];
+  let latestMealRecipes: { id: string; title: string; servings: number | null }[] = [];
   if (familyId) {
     const { data: latestList } = await supabase
       .from("shopping_lists")
-      .select("id, shopping_list_recipes(position, recipes(id, title))")
+      .select("id, shopping_list_recipes(position, servings, recipes(id, title))")
       .eq("family_id", familyId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -93,8 +97,8 @@ export default async function HomePage() {
     latestMealRecipes = (latestList?.shopping_list_recipes ?? [])
       .slice()
       .sort((a, b) => a.position - b.position)
-      .map((r) => r.recipes)
-      .filter((r): r is { id: string; title: string } => r !== null);
+      .filter((r) => r.recipes !== null)
+      .map((r) => ({ id: r.recipes!.id, title: r.recipes!.title, servings: r.servings }));
   }
 
   return (
@@ -117,6 +121,9 @@ export default async function HomePage() {
                   className="inline-block rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100"
                 >
                   {recipe.title}
+                  {recipe.servings ? (
+                    <span className="ml-1 font-normal text-brand-400">({recipe.servings}人前)</span>
+                  ) : null}
                 </Link>
               </li>
             ))}

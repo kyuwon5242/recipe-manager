@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-10-10(フェーズ29時点)
+最終更新: 2026-10-10(フェーズ30時点)
 
 ---
 
@@ -117,6 +117,8 @@
 | SHOP-14 | 家族全員の買い物リスト一覧を、作成・更新日時付きで確認する | 家族メンバー/オーナー | `/shopping-lists` |
 | SHOP-15 | 買い物リストの食材をタップして購入済み(取り消し線)にする/戻す(タップごとの通信を避け、まとめて自動保存) | 家族メンバー/オーナー | `/shopping-lists/[id]` |
 | SHOP-16 | 買い物リストをコピーする(LINE等への貼り付け用)/削除する | 家族メンバー/オーナー | `/shopping-lists/[id]` |
+| SHOP-17 | 確定済みの買い物リストを「編集する」モードに切り替え、食材の追加・削除・名前/数量/単位/分類の変更を行う | 家族メンバー/オーナー | `/shopping-lists/[id]` |
+| SHOP-18 | 買い物リスト全体のメモ(店員に伝えたいこと、まとめ買いの注意など)を入力・編集する(食材リスト作成の下書き画面・確定後の詳細画面どちらでも可能) | 家族メンバー/オーナー | `/shopping-list`, `/shopping-lists/[id]` |
 
 #### 献立エージェント(利用許可制・実験機能)
 
@@ -235,9 +237,9 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `recipes` | `id`(PK), `title`, `category`, `genre`, `servings`, `instructions`, `memo`, `recipe_url`, `is_favorite`, `family_id`(→families), `created_by`/`updated_by`(→profiles), `created_at`, `updated_at` | レシピ本体。家族単位でスコープ(フェーズ16で`photo_url`列を廃止) |
 | `ingredients_master` | `id`(PK), `name`(unique), `default_unit`, `category`, `season_months`(integer[], null可), `reading`(text, null可), `created_at` | 食材の共有辞書(家族を跨いで共有)。`category`はスーパー準拠の10分類(下記E参照)。`season_months`(ガチャ確率調整用)・`reading`(ひらがなの読み。図鑑カードのルビ表示用)はいずれもゲーム要素向けで、`/admin/game-cards`のカード編集画面から食材ごとに設定する |
 | `recipe_ingredients` | `id`(PK), `recipe_id`(→recipes), `ingredient_id`(→ingredients_master), `quantity`, `unit` | レシピごとの必要食材(数量・単位はレシピ側で保持し、名前はマスタを参照) |
-| `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される |
+| `shopping_lists` | `id`(PK), `family_id`(→families), `created_by`(→profiles), `title`, `memo`(text, null可), `created_at`, `updated_at`, `store_id`(→family_stores, null可) | 確定済み買い物リスト。上書き保存時は`updated_at`が更新される。`memo`はリスト全体で1つのメモ(フェーズ30で追加) |
 | `shopping_list_items` | `id`(PK), `shopping_list_id`(→shopping_lists), `name`, `quantity`, `unit`, `category`, `position`, `is_checked` | 買い物リストの各品目 |
-| `shopping_list_recipes` | `id`(PK), `shopping_list_id`(→shopping_lists), `recipe_id`(→recipes), `position` | 買い物リストのもとになったレシピ(ホームの「今回つくるレシピ」表示用) |
+| `shopping_list_recipes` | `id`(PK), `shopping_list_id`(→shopping_lists), `recipe_id`(→recipes), `position`, `servings`(integer, null可) | 買い物リストのもとになったレシピ(ホームの「今回つくるレシピ」表示用)。`servings`は確定時点の人数(フェーズ30で追加。ホームで「(N人前)」として表示) |
 | `family_stores` | `id`(PK), `family_id`(→families), `name`, `category_order`(text[]), `position`, `created_at` | 家族の「よく使うスーパー」(最大10件、アプリ側で制御)。カテゴリの並び順を保持 |
 | `family_default_items` | `id`(PK), `family_id`(→families), `name`, `quantity`, `unit`, `category`, `position`, `created_at` | 家族の「どの買い物でも必ず含める食材」 |
 | `ai_usage_logs` | `id`(PK), `family_id`(→families, null可), `user_id`(→profiles, null可), `feature`, `model`, `input_tokens`, `output_tokens`, `duration_ms`, `created_at` | AI呼び出しごとの利用量記録。閲覧は管理者限定 |
@@ -257,7 +259,7 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 
 主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)、`get_gacha_status()`(呼び出したユーザー本人の今日のガチャ残り回数。基本3回+ボーナス-使用済み。日付が変わっていれば未使用として返す)/`draw_gacha()`(ガチャ1回分の処理。呼び出したユーザー本人の行をロックして回数を判定→レアリティを重みで抽選→そのレアリティ内から旬の食材を`season_multiplier`倍の重みで1枚抽選→カードの付与先は引き続き家族単位で`family_cards`加算・`card_acquisitions`追記→本人の使用回数を加算。カードが1枚も無いレアリティ・重み0のレアリティは抽選対象外)、`get_next_quiz()`(呼び出したユーザーの今日の回答数・正解数と、次の1問。日本時間で日付が変わると回数リセット。1日3問に達していれば問題はnull。同じ人・同じ日・同じ回答数の間は同じ問題を返す)/`answer_quiz()`(回答の判定・履歴記録・全問正解なら正解した本人の今日のガチャに+1回を1トランザクションで行う。上限超過・同日の同問題の再回答・不正な選択肢は例外で拒否)、`make_dish()`(レシピの材料のうちカード化されている食材を対象に、家族が全カードを1枚以上持っているか判定→`family_dishes`に達成記録→対象カードを1枚ずつ消費、を1トランザクションで行うSECURITY DEFINER RPC。対象カードの`family_cards`行をロックしてから判定するため二重消費・二重達成は起きない。対象カードが無い・カード不足・達成済みはそれぞれ例外で拒否)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0034_game_gacha_per_user.sql`(詳細は5〜30章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0035_shopping_list_memo_and_recipe_servings.sql`(詳細は5〜44章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 
@@ -288,8 +290,8 @@ AIモデルの使い分け方針(フェーズ9で整理、フェーズ18で新�
 - 認証(Google OAuth/メール・パスワード)、家族共有、招待コード
 - AI新レシピ提案・AI献立提案(品目別品数指定)
 - 献立トレイ(ドラッグ&ドロップ + タップで追加の両対応、localStorage永続、個人ごとの作業スペース)。画面右下に固定表示されたボタン(追加件数バッジ付き)からモーダルで開く。品目ごとの枠数指定は廃止し、追加した分だけ増えていく形。登録済みレシピは追加済みの間ボタンが永続的に「追加済み」表示になり再追加不可。トレイの一括リセットが可能。レシピ一覧・レシピ詳細・AI提案・献立提案のどの画面からも追加でき、食材リスト作成への入口はこのトレイに統一されている
-- 食材リスト作成(単位のバラつき自動統合、カテゴリ一括「持っている」選択、ステップ表示、手持ち確認を省略するクイック作成)。レシピ選択は行わず、献立トレイで選んだレシピの人数調整・除外のみを行う
-- 買い物リスト(家族共有、チェックリスト、カテゴリ固定順表示、クリップボードコピー)
+- 食材リスト作成(単位のバラつき自動統合、カテゴリ一括「持っている」選択、ステップ表示、手持ち確認を省略するクイック作成、リスト全体のメモ入力)。レシピ選択は行わず、献立トレイで選んだレシピの人数調整・除外のみを行う。個数単位(本・個など)の合算数量は小数第1位で切り上げて表示する(例: 1.666...本→1.7本)
+- 買い物リスト(家族共有、チェックリスト、カテゴリ固定順表示、クリップボードコピー、リスト全体のメモ、確定後も「編集する」モードで食材の追加・削除・名前/数量/単位/分類の変更が可能)。もとになったレシピの確定時点の人数を保存し、ホームの「今回つくるレシピ」に人数を表示する
 - 食材名表記ゆれの解消(保存時自動解決 + 管理者限定の一括整理ツール、未分類/旧カテゴリのみを対象にした増分処理)
 - 管理者機能(全家族レシピの横断参照・編集、ユーザー管理、利用停止による強制ログアウト)
 - セキュリティ対策(セキュリティヘッダー、ファイルアップロード検証、RLS+アプリ層の多層防御、SSRF対策)

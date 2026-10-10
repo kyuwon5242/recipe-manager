@@ -3,6 +3,7 @@ export type ShoppingList = {
   family_id: string;
   created_by: string;
   title: string;
+  memo: string | null;
   created_at: string;
 };
 

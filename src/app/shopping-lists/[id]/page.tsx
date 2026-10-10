@@ -9,6 +9,7 @@ import type { ShoppingListItem } from "@/types/shopping-list";
 type ListRow = {
   id: string;
   title: string;
+  memo: string | null;
   created_at: string;
   updated_at: string;
   store_id: string | null;
@@ -23,7 +24,7 @@ export default async function ShoppingListDetailPage({
 
   const { data: list, error } = await supabase
     .from("shopping_lists")
-    .select("id, title, created_at, updated_at, store_id, family_stores(category_order)")
+    .select("id, title, memo, created_at, updated_at, store_id, family_stores(category_order)")
     .eq("id", id)
     .maybeSingle<ListRow>();
 
@@ -65,6 +66,7 @@ export default async function ShoppingListDetailPage({
         listId={list.id}
         items={items ?? []}
         categoryOrder={list.family_stores?.category_order}
+        initialMemo={list.memo}
       />
     </div>
   );

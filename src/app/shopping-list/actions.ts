@@ -19,6 +19,11 @@ export type CreateShoppingListOptions = {
   overwriteListId?: string | null;
   // 買い物リストのもとになったレシピ(ホームの「今回つくるレシピ」表示用)
   recipeIds?: string[];
+  // レシピごとの確定時点の人数({recipeId: servings})。ホームの「今回つくる
+  // レシピ」で人数を表示するため、shopping_list_recipes.servingsに保存する
+  recipeServings?: Record<string, number>;
+  // リスト全体のメモ(店員に伝えたいこと、まとめ買いの注意など)
+  memo?: string | null;
 };
 
 export type ShoppingListSummary = {
@@ -169,6 +174,7 @@ export async function createShoppingList(
         title: formatJapaneseTitle(now),
         updated_at: now.toISOString(),
         store_id: resolvedStoreId,
+        memo: options.memo ?? null,
       })
       .eq("id", existing.id);
 
@@ -198,6 +204,7 @@ export async function createShoppingList(
         created_by: user.id,
         title: formatJapaneseTitle(now),
         store_id: resolvedStoreId,
+        memo: options.memo ?? null,
       })
       .select("id")
       .single();
@@ -231,6 +238,7 @@ export async function createShoppingList(
         shopping_list_id: listId,
         recipe_id: recipeId,
         position: index,
+        servings: options.recipeServings?.[recipeId] ?? null,
       }))
     );
 

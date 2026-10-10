@@ -67,6 +67,17 @@ export function countQuantityOptionsFor(current: number | null): number[] {
   return [...COUNT_QUANTITY_OPTIONS, current].sort((a, b) => a - b);
 }
 
+// 個数単位(本・個など)は複数レシピ分を合算すると1.6666...のような
+// 割り切れない小数になりやすい。買い物時に不足しないよう、小数第1位で
+// 切り上げて表示する(例: 1.6666...本 → 1.7本)。EPSILONは浮動小数点の
+// 誤差で僅かに整数を超えた値(例: 2.0000000000002)が繰り上がって
+// しまわないようにするための補正。
+const ROUND_UP_EPSILON = 1e-9;
+
+export function roundUpCountQuantity(value: number): number {
+  return Math.ceil(value * 10 - ROUND_UP_EPSILON) / 10;
+}
+
 export function normalizeUnit(unit: string | null): { group: UnitGroup; factor: number } | null {
   if (!unit) return null;
   const trimmed = unit.trim();

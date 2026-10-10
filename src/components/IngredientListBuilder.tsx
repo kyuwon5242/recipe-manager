@@ -214,6 +214,7 @@ export function IngredientListBuilder({
   const [pendingItems, setPendingItems] = useState<CreateShoppingListItemInput[] | null>(null);
   const [selectedOverwriteId, setSelectedOverwriteId] = useState<string>("");
   const [isLoadingOverwrite, startLoadOverwrite] = useTransition();
+  const [memo, setMemo] = useState("");
 
   const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
   const activeCategoryOrder = selectedStore?.category_order ?? INGREDIENT_CATEGORIES;
@@ -258,6 +259,17 @@ export function IngredientListBuilder({
       next.delete(id);
       return next;
     });
+  }
+
+  // 確定時点の人数をshopping_list_recipesに保存するための{recipeId: servings}。
+  // ホーム画面の「今回つくるレシピ」表示で使う。
+  function buildRecipeServings(): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const id of selectedRecipeIds) {
+      const recipe = recipes.find((r) => r.id === id);
+      result[id] = servingsTargets[id] ?? (recipe?.servings && recipe.servings > 0 ? recipe.servings : 1);
+    }
+    return result;
   }
 
   function toggleOwned(key: string) {
@@ -342,6 +354,8 @@ export function IngredientListBuilder({
         const result = await createShoppingList(items, {
           storeId: selectedStoreId || null,
           recipeIds: Array.from(selectedRecipeIds),
+          recipeServings: buildRecipeServings(),
+          memo: memo.trim() || null,
         });
         if (result?.limitReached) {
           setPendingItems(items);
@@ -369,6 +383,8 @@ export function IngredientListBuilder({
           storeId: selectedStoreId || null,
           overwriteListId: selectedOverwriteId,
           recipeIds: Array.from(selectedRecipeIds),
+          recipeServings: buildRecipeServings(),
+          memo: memo.trim() || null,
         });
       } catch (err) {
         if (isRedirectError(err)) throw err;
@@ -570,6 +586,17 @@ export function IngredientListBuilder({
               </div>
             );
           })}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">メモ(任意)</label>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            rows={2}
+            placeholder="例: 特売になったら多めに買う、〇〇スーパー限定の商品で、など"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
 
         <StoreSelector stores={stores} selectedStoreId={selectedStoreId} onChange={setSelectedStoreId} />

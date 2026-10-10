@@ -1,4 +1,10 @@
-import { formatBaseQuantity, normalizeUnit, type UnitGroup } from "@/lib/ingredients/units";
+import {
+  formatBaseQuantity,
+  isCountUnit,
+  normalizeUnit,
+  roundUpCountQuantity,
+  type UnitGroup,
+} from "@/lib/ingredients/units";
 import { UNCATEGORIZED_LABEL } from "@/lib/ingredients/categories";
 
 // 同じ食材でもレシピによって単位がバラバラなことがある(人参の「240g」と
@@ -84,7 +90,11 @@ export function aggregateNeededIngredients(recipes: AggregateRecipeInput[]): Nee
           unit: formatted?.unit ?? (seg.group === "weight" ? "g" : "ml"),
         };
       }
-      return { segmentKey: `${name}__${segKey}`, quantity: seg.quantity, unit: seg.unit };
+      const quantity =
+        seg.quantity != null && isCountUnit(seg.unit)
+          ? roundUpCountQuantity(seg.quantity)
+          : seg.quantity;
+      return { segmentKey: `${name}__${segKey}`, quantity, unit: seg.unit };
     });
     return { key: name, name, category: entry.category, segments };
   });
