@@ -132,6 +132,32 @@
   to { transform: translateX(-50%); }
 }
 
+/* ゲーム要素(食材図鑑・ガチャ・クイズ・料理作成、/game配下すべて)専用の
+   背景。他機能の生成り色(--color-paper)よりはっきり濃い「まな板の上で
+   遊ぶ」木目調にして、ゲーム・コレクション感を出す(23章の提案・確認用)。
+   斜めの木目ストライプを2重に重ね、上から柔らかい光が当たっているような
+   radial-gradientを足して立体感を出している。 */
+.game-zone {
+  background-color: #dcb183;
+  background-image:
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 3px,
+      transparent 3px,
+      transparent 28px
+    ),
+    repeating-linear-gradient(
+      100deg,
+      rgba(107, 61, 23, 0.08) 0px,
+      rgba(107, 61, 23, 0.08) 1px,
+      transparent 1px,
+      transparent 14px
+    ),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 244, 222, 0.5), transparent 60%),
+    linear-gradient(160deg, #e9c89a 0%, #d2a06a 55%, #b9875a 100%);
+}
+
 /* 食材図鑑カード(GameCardVisual)。
    - 縁取り・背景: カテゴリの色相(--h)と彩度係数(--k)で塗り分け、
      レアリティ(.n/.r/.s/.u)が上がるほど濃く・鮮やかにする
