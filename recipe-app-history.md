@@ -1336,3 +1336,11 @@ game-design.mdのフェーズC(クイズ)を実装した。
 
 - **実装**: `src/app/game/layout.tsx`を新設し、`/game`配下すべて(ハブ・図鑑一覧・カード詳細・ガチャ・クイズ・料理作成)に共通の`.game-zone`ラッパーを適用。`globals.css`に`.game-zone`を追加し、他機能の生成り色(`--color-paper`)よりはっきり濃い木目調の背景(2重のrepeating-linear-gradientで斜めの木目ストライプ、radial-gradientで上から光が当たっている立体感)にした。個別ページのJSXやカード自体のデザイン(`GameCardVisual`)は変更していない。Next.jsのネストレイアウト機能を使ったため、各ページファイルを1つずつ直す必要がなかった。
 - **確認**: `npx tsc --noEmit`・`npx eslint src --max-warnings=0`がいずれもエラー0件であることを確認。ローカルプレビューで`/game`・`/game/cards`・`/game/gacha`・`/game/quiz`のスクリーンショットを撮り、ユーザーに提示して「ばっちり」と確認を得てからコミットした。
+
+## 55. 新規家族のデフォルトレシピを50品(食材図鑑カード対応)に総入れ替え(クラスターF続き)(フェーズ34)
+
+「食材図鑑から選んで作る料理カード」機能(未実装、今後対応予定)に向けて、対象レシピをユーザーと一緒に選定した。本番DBの`game_cards`を読み取り専用スクリプト(`scripts/export-game-cards.mjs`、既存)で実際に取得し、現在カード化済みの食材99種を正確に把握した上で、その食材だけを核に使う「各国の王道・日常的な料理」50品(主食13・主菜12・副菜13・汁物12、和食13・洋食12・中華12・韓国8・その他〈タイ/インド/メキシコ/ベトナム/フランス〉5)をユーザーと複数回のやり取りで確定した(初期候補→「王道・日常的でないものを見直して」のフィードバックで15品差し替え→さらに4品を個別の料理名の提案に沿って最終調整)。
+
+- **[0036_default_recipes_fifty_dishes.sql](../supabase/migrations/0036_default_recipes_fifty_dishes.sql)**: `create_family()`を`create or replace function`で全面書き換え。食材マスタへのupsert(カード化済み食材は既存行をそのまま使うようon conflict do nothing、調味料など33種はカード対象外の新規食材として追加)の後、`with new_recipes as (insert into recipes ... returning id, title)`で50品を一括INSERTし、続く`insert into recipe_ingredients select ... from new_recipes join (values(...)) as v(title, name, quantity, unit) on v.title = nr.title join ingredients_master ...`で332行の材料を一括登録する構成にした(旧6品を1品ずつ`insert ... returning id into recipe_id`していた0010の方式を、50品規模でも見通しが保てるようタイトル結合方式にまとめ直した)。
+- **食材名の厳密な一致**: カードと紐づく食材(例: 「牛肉（薄切り）」は全角括弧、「豚ロース肉」は「(生姜焼き用)」等の接尾辞を付けない)は、`game_cards`経由で実際に取得した`ingredients_master.name`と完全に一致させた。これにより新規家族は作成時点で50品のレシピを持ち、材料がすべて揃っているカード化食材については「料理を作る」(`make_dish()`)がそのまま機能する。
+- **確認**: 生成したSQLに対し、Node.jsスクリプトで(a)レシピ50件の重複無し、(b)主食13/主菜12/副菜13/汁物12・和食13/洋食12/中華12/韓国8/他5カ国1品ずつの構成が意図通りであること、(c)recipe_ingredientsで参照している全レシピ名がレシピ一覧に実在すること、(d)全食材名がingredients_master upsertブロックで宣言済みであること、(e)誤って文字列'null'になっていないこと、(f)括弧の対応が取れていること、を機械的に検証した。これまでの運用通り、マイグレーション適用はユーザー自身にSupabase SQL Editorで実行してもらう。

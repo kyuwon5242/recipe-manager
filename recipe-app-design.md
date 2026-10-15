@@ -1,7 +1,7 @@
 # 自炊レシピ管理アプリ(レシピマネージャー) 設計書
 
 作成日: 2026-09-17
-最終更新: 2026-10-10(フェーズ31時点)
+最終更新: 2026-10-16(フェーズ34時点)
 
 ---
 
@@ -257,9 +257,9 @@ Supabase(PostgreSQL)。全テーブルRLS有効。`auth.users`はSupabase Auth�
 | `quiz_questions` | `id`(PK), `category`(nutrition/season/origin/storage/cooking), `difficulty`(easy/normal/hard), `question_text`, `choices`(jsonb配列), `correct_index`, `explanation_text`, `related_ingredient_id`(→ingredients_master, null可), `created_at` | クイズ問題。正解が見えてしまうため**管理者のみ直接閲覧可**(一般ユーザーは`get_next_quiz()`経由で、正解の位置は返らない)。追加・修正はSQL Editorで行う。初期問題は`0025_game_quiz_seed.sql`(87問)→`0026`(正解位置の偏り是正)→`0027_game_quiz_replace_all.sql`(ユーザーが全問見直し、146問に総入れ替え。0025/0026は経緯として残すが内容は0027が現状)。問題文・選択肢・解説は「漢字{かんじ}」記法でふりがな付き(FuriganaTextで表示)。問題を追加するときは正解位置をA〜Dに散らす |
 | `quiz_attempts` | `id`(PK), `user_id`(→profiles), `question_id`(→quiz_questions), `is_correct`, `answered_at` | クイズの回答履歴(本人のみ閲覧可。書き込みは`answer_quiz()`経由に限る)。「1日の回答数」「同日の再出題防止」「未回答問題の優先出題」の判定に使う |
 
-主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に代表的なレシピ6品も自動投入する)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)、`get_gacha_status()`(呼び出したユーザー本人の今日のガチャ残り回数。基本3回+ボーナス-使用済み。日付が変わっていれば未使用として返す)/`draw_gacha()`(ガチャ1回分の処理。呼び出したユーザー本人の行をロックして回数を判定→レアリティを重みで抽選→そのレアリティ内から旬の食材を`season_multiplier`倍の重みで1枚抽選→カードの付与先は引き続き家族単位で`family_cards`加算・`card_acquisitions`追記→本人の使用回数を加算。カードが1枚も無いレアリティ・重み0のレアリティは抽選対象外)、`get_next_quiz()`(呼び出したユーザーの今日の回答数・正解数と、次の1問。日本時間で日付が変わると回数リセット。1日3問に達していれば問題はnull。同じ人・同じ日・同じ回答数の間は同じ問題を返す)/`answer_quiz()`(回答の判定・履歴記録・全問正解なら正解した本人の今日のガチャに+1回を1トランザクションで行う。上限超過・同日の同問題の再回答・不正な選択肢は例外で拒否)、`make_dish()`(レシピの材料のうちカード化されている食材を対象に、家族が全カードを1枚以上持っているか判定→`family_dishes`に達成記録→対象カードを1枚ずつ消費、を1トランザクションで行うSECURITY DEFINER RPC。対象カードの`family_cards`行をロックしてから判定するため二重消費・二重達成は起きない。対象カードが無い・カード不足・達成済みはそれぞれ例外で拒否)。
+主なDB関数・トリガー: `is_family_member()`/`is_family_owner()`/`is_admin()`(RLS内再帰回避用のSECURITY DEFINER関数)、`create_family()`/`join_family_with_code()`(RPC。`create_family()`は新規家族に、食材図鑑のカード化済み食材だけで作れる王道レシピ50品〈主食13・主菜12・副菜13・汁物12、和食13・洋食12・中華12・韓国8・その他(タイ/インド/メキシコ/ベトナム/フランス)5〉も自動投入する〈フェーズ34で6品から刷新〉)、`handle_new_user()`(profiles自動作成)、`set_recipe_created_by()`/`set_recipe_updated_by()`(SQL Editor実行時も壊れないようcoalesce対応済み)、`protect_profile_admin_fields()`(非管理者による`is_admin`/`is_suspended`/`can_use_menu_agent`の自己書き換え防止。SQL Editorからの管理者付与は許可)、`check_ai_quota()`/`consume_ai_quota()`(呼び出したユーザー自身のAI利用上限を確認・消費するSECURITY DEFINER RPC。管理者自身も含め全ユーザーが対象)、`admin_reset_ai_quota()`(管理者が指定ユーザー〈自分自身を含む〉の週間利用額をリセットするRPC)、`get_gacha_status()`(呼び出したユーザー本人の今日のガチャ残り回数。基本3回+ボーナス-使用済み。日付が変わっていれば未使用として返す)/`draw_gacha()`(ガチャ1回分の処理。呼び出したユーザー本人の行をロックして回数を判定→レアリティを重みで抽選→そのレアリティ内から旬の食材を`season_multiplier`倍の重みで1枚抽選→カードの付与先は引き続き家族単位で`family_cards`加算・`card_acquisitions`追記→本人の使用回数を加算。カードが1枚も無いレアリティ・重み0のレアリティは抽選対象外)、`get_next_quiz()`(呼び出したユーザーの今日の回答数・正解数と、次の1問。日本時間で日付が変わると回数リセット。1日3問に達していれば問題はnull。同じ人・同じ日・同じ回答数の間は同じ問題を返す)/`answer_quiz()`(回答の判定・履歴記録・全問正解なら正解した本人の今日のガチャに+1回を1トランザクションで行う。上限超過・同日の同問題の再回答・不正な選択肢は例外で拒否)、`make_dish()`(レシピの材料のうちカード化されている食材を対象に、家族が全カードを1枚以上持っているか判定→`family_dishes`に達成記録→対象カードを1枚ずつ消費、を1トランザクションで行うSECURITY DEFINER RPC。対象カードの`family_cards`行をロックしてから判定するため二重消費・二重達成は起きない。対象カードが無い・カード不足・達成済みはそれぞれ例外で拒否)。
 
-マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0035_shopping_list_memo_and_recipe_servings.sql`(詳細は5〜44章の各フェーズ記録を参照)。
+マイグレーション一覧: `supabase/migrations/0001_init.sql`〜`0036_default_recipes_fifty_dishes.sql`(詳細は5〜44章の各フェーズ記録を参照)。
 
 ## D. システム構成(技術要素)
 
