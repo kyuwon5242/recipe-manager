@@ -4,9 +4,10 @@ import { getCurrentFamilyId } from "@/lib/family/current";
 import { getGachaStatus } from "@/lib/game/gacha";
 import { getQuizStatus } from "@/lib/game/quiz";
 import { RARITY_BADGE_STYLES, RARITY_LABELS, type CardRarity } from "@/lib/game/cards";
-import { getFamilyRankStatus, MAX_DISH_COUNT } from "@/lib/game/rank";
+import { MAX_DISH_COUNT } from "@/lib/game/rank";
 import { getAchievedDishTitles } from "@/lib/game/dish-progress";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { FamilyRankCard } from "@/components/FamilyRankCard";
 
 export const metadata = { title: "食材図鑑" };
 
@@ -28,7 +29,6 @@ export default async function GamePage() {
   const [
     { count: totalCards },
     { count: ownedCards },
-    { count: achievedDishes },
     achievedDishTitles,
     gachaStatus,
     quizStatus,
@@ -40,7 +40,6 @@ export default async function GamePage() {
       .select("id", { count: "exact", head: true })
       .eq("family_id", familyId)
       .not("first_acquired_at", "is", null),
-    supabase.from("family_dishes").select("id", { count: "exact", head: true }).eq("family_id", familyId),
     getAchievedDishTitles(supabase, familyId),
     getGachaStatus(supabase, familyId),
     getQuizStatus(supabase),
@@ -59,7 +58,6 @@ export default async function GamePage() {
 
   const total = totalCards ?? 0;
   const owned = ownedCards ?? 0;
-  const rankStatus = getFamilyRankStatus(achievedDishes ?? 0);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -71,15 +69,8 @@ export default async function GamePage() {
         旬の食材カードを集めて、家族の図鑑を育てていく機能です。集めたカードで料理を作ると、家族のランクが上がっていきます。
       </p>
 
-      <div className="mt-6 rounded-xl bg-white p-4 shadow-raised">
-        <p className="text-sm text-gray-500">家族ランク</p>
-        <p className="mt-1 text-2xl font-bold">{rankStatus.rank.label}</p>
-        <p className="mt-1 text-xs text-gray-500">
-          達成 {rankStatus.achievedCount} / {MAX_DISH_COUNT}種
-          {rankStatus.nextRank
-            ? `・次の「${rankStatus.nextRank.label}」まであと${rankStatus.toNextRank}種`
-            : "・最上位に到達しています"}
-        </p>
+      <div className="mt-6">
+        <FamilyRankCard achievedCount={achievedDishTitles.size} />
       </div>
 
       <div className="mt-4 rounded-xl bg-white p-4 shadow-raised">

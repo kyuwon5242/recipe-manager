@@ -5,7 +5,7 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 import { DishCardVisual } from "@/components/DishCardVisual";
 import { DISH_CATALOG } from "@/lib/game/dish-catalog";
 import { resolveDishImageSrc } from "@/lib/game/dish-image";
-import { getAchievedDishTitles } from "@/lib/game/dish-progress";
+import { getAchievedDishTitles, getReadyDishTitles } from "@/lib/game/dish-progress";
 import { GENRE_TABS } from "@/lib/recipe-genre";
 import { MAX_DISH_COUNT } from "@/lib/game/rank";
 
@@ -15,11 +15,15 @@ export default async function GameDishesPage() {
   const supabase = await createClient();
   const familyId = await getCurrentFamilyId();
 
-  const achievedTitles = await getAchievedDishTitles(supabase, familyId);
+  const [achievedTitles, readyTitles] = await Promise.all([
+    getAchievedDishTitles(supabase, familyId),
+    getReadyDishTitles(supabase, familyId),
+  ]);
 
   const items = DISH_CATALOG.map((dish) => ({
     ...dish,
     isAchieved: achievedTitles.has(dish.title),
+    isReady: readyTitles.has(dish.title),
     src: achievedTitles.has(dish.title) ? resolveDishImageSrc(dish.title) : null,
   }));
 
@@ -62,6 +66,7 @@ export default async function GameDishesPage() {
                     genre={item.genre}
                     src={item.src}
                     isAchieved={item.isAchieved}
+                    isReady={item.isReady}
                   />
                 </Link>
               ))}

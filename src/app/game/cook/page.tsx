@@ -4,7 +4,8 @@ import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { MakeDishButton } from "@/components/MakeDishButton";
 import { getCategoryColor } from "@/lib/category-color";
-import { getFamilyRankStatus, MAX_DISH_COUNT } from "@/lib/game/rank";
+import { FamilyRankCard } from "@/components/FamilyRankCard";
+import { DISH_CATALOG } from "@/lib/game/dish-catalog";
 
 export const metadata = { title: "料理を作る" };
 
@@ -92,7 +93,11 @@ export default async function GameCookPage() {
     };
   });
 
-  const eligible = items.filter((item) => item.requiredCount > 0);
+  // 料理図鑑(DISH_CATALOG)の50品のみを対象とする(game-design.md 10章)。
+  // カード化食材を含まないレシピ・50品に含まれないレシピはここでは扱わない。
+  const catalogTitles = new Set(DISH_CATALOG.map((d) => d.title));
+  const inCatalog = items.filter((item) => catalogTitles.has(item.title));
+  const eligible = inCatalog.filter((item) => item.requiredCount > 0);
   const achieved = eligible
     .filter((item) => item.isAchieved)
     .sort((a, b) => (b.achievedAt ?? "").localeCompare(a.achievedAt ?? ""));
@@ -104,9 +109,8 @@ export default async function GameCookPage() {
       if (rateA !== rateB) return rateB - rateA;
       return a.title.localeCompare(b.title, "ja");
     });
-  const skippedCount = items.length - eligible.length;
-
-  const rankStatus = getFamilyRankStatus(achieved.length);
+  const noCardCount = inCatalog.length - eligible.length;
+  const notRegisteredCount = DISH_CATALOG.length - inCatalog.length;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -122,13 +126,8 @@ export default async function GameCookPage() {
         レシピの材料をカードで100%そろえると「料理を作る」が実行できます。使ったカードはそれぞれ1枚消費されますが、図鑑の入手済み表示は消えません。1つのレシピにつき家族で1回だけ達成できます。
       </p>
 
-      <div className="mt-6 rounded-xl bg-white p-4 shadow-raised">
-        <p className="text-sm text-gray-500">家族ランク</p>
-        <p className="mt-1 text-xl font-bold">{rankStatus.rank.label}</p>
-        <p className="mt-1 text-sm text-gray-500">
-          達成 {rankStatus.achievedCount} <span className="text-gray-400">/ {MAX_DISH_COUNT}種</span>
-          {rankStatus.nextRank ? `(次の「${rankStatus.nextRank.label}」まであと${rankStatus.toNextRank}種)` : "(最上位に到達しています)"}
-        </p>
+      <div className="mt-6">
+        <FamilyRankCard achievedCount={achieved.length} />
       </div>
 
       <section className="mt-6">
@@ -140,10 +139,22 @@ export default async function GameCookPage() {
             {candidates.map((item) => {
               const color = getCategoryColor(item.category);
               return (
-                <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-raised">
+                <li
+                  key={item.id}
+                  className={`rounded-lg border bg-white p-4 shadow-raised transition ${
+                    item.isReady
+                      ? "border-amber-400 ring-2 ring-amber-300 shadow-[0_0_16px_rgba(251,191,36,0.55)]"
+                      : "border-gray-200"
+                  }`}
+                >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-1.5">
+                        {item.isReady ? (
+                          <span className="text-base" aria-hidden="true">
+                            ✨
+                          </span>
+                        ) : null}
                         <Link href={`/recipes/${item.id}`} className="font-semibold hover:underline">
                           {item.title}
                         </Link>
@@ -191,9 +202,12 @@ export default async function GameCookPage() {
         </section>
       ) : null}
 
-      {skippedCount > 0 ? (
+      {noCardCount > 0 || notRegisteredCount > 0 ? (
         <p className="mt-6 text-xs text-gray-400">
-          カード化された食材を材料に含まないレシピ{skippedCount}件は対象外です。
+          {noCardCount > 0 ? `カード化された食材を材料に含まないレシピ${noCardCount}件は対象外です。` : ""}
+          {notRegisteredCount > 0
+            ? `料理図鑑の50品のうち${notRegisteredCount}品はまだレシピが登録されていません。`
+            : ""}
         </p>
       ) : null}
     </div>

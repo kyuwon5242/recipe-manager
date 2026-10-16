@@ -26,9 +26,9 @@ export function MakeDishButton({ recipeId, title }: { recipeId: string; title: s
             if (result.error) setError(result.error);
           });
         }}
-        className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800 disabled:opacity-50"
+        className="animate-[bounce_2s_infinite] rounded-full bg-gradient-to-r from-amber-400 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-brand transition hover:scale-105 hover:from-amber-300 hover:to-brand-500 active:scale-95 disabled:animate-none disabled:opacity-50"
       >
-        {isPending ? "作っています…" : "料理を作る"}
+        {isPending ? "👩‍🍳 作っています…" : "🍳 Let's Cooking!"}
       </button>
       {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
     </div>

@@ -6,6 +6,7 @@ import { ZoneIcon } from "@/components/ZoneIcon";
 import { DishCardVisual } from "@/components/DishCardVisual";
 import { DISH_CATALOG } from "@/lib/game/dish-catalog";
 import { resolveDishImageSrc } from "@/lib/game/dish-image";
+import { getReadyDishTitles } from "@/lib/game/dish-progress";
 
 export default async function GameDishDetailPage({ params }: { params: Promise<{ title: string }> }) {
   const { title: encodedTitle } = await params;
@@ -48,6 +49,8 @@ export default async function GameDishDetailPage({ params }: { params: Promise<{
 
   const isAchieved = achievement !== null;
   const src = isAchieved ? resolveDishImageSrc(title) : null;
+  const readyTitles = await getReadyDishTitles(supabase, familyId);
+  const isReady = readyTitles.has(title);
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">
@@ -56,7 +59,14 @@ export default async function GameDishDetailPage({ params }: { params: Promise<{
       </Link>
 
       <div className="mx-auto mt-4">
-        <DishCardVisual title={dish.title} category={dish.category} genre={dish.genre} src={src} isAchieved={isAchieved} />
+        <DishCardVisual
+          title={dish.title}
+          category={dish.category}
+          genre={dish.genre}
+          src={src}
+          isAchieved={isAchieved}
+          isReady={isReady}
+        />
       </div>
 
       <div className="mt-4 rounded-xl border-2 border-white bg-white p-5 shadow-raised">
@@ -73,13 +83,15 @@ export default async function GameDishDetailPage({ params }: { params: Promise<{
         ) : recipe ? (
           <>
             <p className="mt-4 text-sm text-gray-500">
-              まだ達成していない料理です。「料理を作る」でカードがそろっているか確認できます。
+              {isReady
+                ? "✨ 食材カードがそろいました!「料理を作る」で達成できます。"
+                : "まだ達成していない料理です。「料理を作る」でカードがそろっているか確認できます。"}
             </p>
             <Link
               href="/game/cook"
-              className="mt-4 block rounded-md bg-brand-600 px-4 py-2 text-center text-sm font-medium text-white shadow-brand transition hover:bg-brand-700 active:scale-95 active:bg-brand-800"
+              className="mt-4 block animate-[bounce_2s_infinite] rounded-full bg-gradient-to-r from-amber-400 to-brand-600 px-4 py-2 text-center text-sm font-bold text-white shadow-brand transition hover:scale-105 active:scale-95"
             >
-              🍳 料理を作るへ
+              {"🍳 Let's Cooking!"}
             </Link>
           </>
         ) : (

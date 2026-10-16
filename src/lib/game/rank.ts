@@ -7,16 +7,19 @@ export const MAX_DISH_COUNT = 50;
 export type FamilyRank = {
   label: string;
   min: number;
+  // ランクごとのアイコン(絵文字)。駆け出し→料理長→ミシュランと、
+  // 道具からメダル・トロフィーへ格が上がっていくイメージで選定(2026-10-16)。
+  icon: string;
 };
 
 export const FAMILY_RANKS: FamilyRank[] = [
-  { label: "駆け出しシェフ", min: 0 },
-  { label: "中堅シェフ", min: 5 },
-  { label: "ベテランシェフ", min: 13 },
-  { label: "料理長", min: 23 },
-  { label: "ミシュランシェフ☆", min: 35 },
-  { label: "ミシュランシェフ☆☆", min: 43 },
-  { label: "ミシュランシェフ☆☆☆", min: 48 },
+  { label: "駆け出しシェフ", min: 0, icon: "🥄" },
+  { label: "中堅シェフ", min: 5, icon: "🍳" },
+  { label: "ベテランシェフ", min: 13, icon: "🔪" },
+  { label: "料理長", min: 23, icon: "👨‍🍳" },
+  { label: "ミシュランシェフ☆", min: 35, icon: "🥇" },
+  { label: "ミシュランシェフ☆☆", min: 43, icon: "🏅" },
+  { label: "ミシュランシェフ☆☆☆", min: 48, icon: "🏆" },
 ];
 
 export type FamilyRankStatus = {
