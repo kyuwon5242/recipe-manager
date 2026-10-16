@@ -42,6 +42,7 @@ export default async function GameCookPage() {
       supabase
         .from("recipes")
         .select("id, title, category, genre, recipe_ingredients(ingredient_id)")
+        .eq("family_id", familyId)
         .order("title", { ascending: true })
         .returns<RecipeRow[]>(),
       supabase.from("game_cards").select("id, ingredient_id, ingredients_master(name)").returns<CardRow[]>(),

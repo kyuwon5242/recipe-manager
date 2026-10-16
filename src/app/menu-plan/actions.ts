@@ -107,9 +107,11 @@ export async function suggestMealPlan(
     };
   }
 
+  const familyId = await getCurrentFamilyId();
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select("id, title, category, genre, servings, is_favorite, created_at, recipe_ingredients(ingredients_master(name))")
+    .eq("family_id", familyId)
     .order("is_favorite", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<RegisteredRecipeRow[]>();

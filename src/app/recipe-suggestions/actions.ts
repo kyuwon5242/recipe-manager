@@ -89,9 +89,11 @@ export async function suggestRecipes(
     };
   }
 
+  const familyId = await getCurrentFamilyId();
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select("id, title, category, genre, is_favorite, created_at")
+    .eq("family_id", familyId)
     .order("is_favorite", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<RegisteredRecipeRow[]>();

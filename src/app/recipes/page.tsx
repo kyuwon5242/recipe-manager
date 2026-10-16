@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentFamilyId } from "@/lib/family/current";
 import { RecipeListClient } from "@/components/RecipeListClient";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { HelpPanel } from "@/components/HelpPanel";
@@ -27,11 +28,13 @@ type RecipeRow = {
 
 export default async function RecipesPage() {
   const supabase = await createClient();
+  const familyId = await getCurrentFamilyId();
   const { data: recipes, error } = await supabase
     .from("recipes")
     .select(
       "id, title, category, genre, servings, is_favorite, created_at, recipe_ingredients(ingredients_master(name))"
     )
+    .eq("family_id", familyId)
     .order("created_at", { ascending: false })
     .returns<RecipeRow[]>();
 
