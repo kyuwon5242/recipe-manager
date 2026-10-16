@@ -5,6 +5,7 @@ import { getGachaStatus } from "@/lib/game/gacha";
 import { getQuizStatus } from "@/lib/game/quiz";
 import { RARITY_BADGE_STYLES, RARITY_LABELS, type CardRarity } from "@/lib/game/cards";
 import { getFamilyRankStatus, MAX_DISH_COUNT } from "@/lib/game/rank";
+import { getAchievedDishTitles } from "@/lib/game/dish-progress";
 import { ZoneIcon } from "@/components/ZoneIcon";
 
 export const metadata = { title: "食材図鑑" };
@@ -28,6 +29,7 @@ export default async function GamePage() {
     { count: totalCards },
     { count: ownedCards },
     { count: achievedDishes },
+    achievedDishTitles,
     gachaStatus,
     quizStatus,
     { data: recent, error: recentError },
@@ -39,6 +41,7 @@ export default async function GamePage() {
       .eq("family_id", familyId)
       .not("first_acquired_at", "is", null),
     supabase.from("family_dishes").select("id", { count: "exact", head: true }).eq("family_id", familyId),
+    getAchievedDishTitles(supabase, familyId),
     getGachaStatus(supabase, familyId),
     getQuizStatus(supabase),
     supabase
@@ -92,6 +95,16 @@ export default async function GamePage() {
       >
         <p className="font-bold">🍳 料理を作る</p>
         <p className="mt-1 text-xs text-gray-500">カードがそろったレシピで「料理を作る」を実行し、家族ランクを上げる</p>
+      </Link>
+
+      <Link
+        href="/game/dishes"
+        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
+      >
+        <p className="font-bold">🍽️ 料理図鑑を見る</p>
+        <p className="mt-1 text-xs text-gray-500">
+          達成 {achievedDishTitles.size} / {MAX_DISH_COUNT}品。達成した料理から写真が公開されます
+        </p>
       </Link>
 
       <Link
