@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { MakeDishButton } from "@/components/MakeDishButton";
+import { MakeDishProvider } from "@/components/MakeDishProvider";
 import { getCategoryColor } from "@/lib/category-color";
 import { FamilyRankCard } from "@/components/FamilyRankCard";
 import { DISH_CATALOG } from "@/lib/game/dish-catalog";
@@ -113,6 +114,7 @@ export default async function GameCookPage() {
   const notRegisteredCount = DISH_CATALOG.length - inCatalog.length;
 
   return (
+    <MakeDishProvider>
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link href="/game" className="text-sm text-brand-700 hover:underline">
         ← 食材図鑑に戻る
@@ -211,5 +213,6 @@ export default async function GameCookPage() {
         </p>
       ) : null}
     </div>
+    </MakeDishProvider>
   );
 }

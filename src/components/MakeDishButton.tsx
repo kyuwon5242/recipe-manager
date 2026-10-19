@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { makeDish } from "@/app/game/cook/actions";
+import { useNotifyDishAchieved } from "@/components/MakeDishProvider";
 
 export function MakeDishButton({ recipeId, title }: { recipeId: string; title: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const notifyAchieved = useNotifyDishAchieved();
 
   return (
     <div>
@@ -23,7 +25,11 @@ export function MakeDishButton({ recipeId, title }: { recipeId: string; title: s
           setError(null);
           startTransition(async () => {
             const result = await makeDish(recipeId);
-            if (result.error) setError(result.error);
+            if (result.error) {
+              setError(result.error);
+            } else if (result.dish) {
+              notifyAchieved(result.dish);
+            }
           });
         }}
         className="animate-[bounce_2s_infinite] rounded-full bg-gradient-to-r from-amber-400 to-brand-600 px-4 py-2 text-sm font-bold text-white shadow-brand transition hover:scale-105 hover:from-amber-300 hover:to-brand-500 active:scale-95 disabled:animate-none disabled:opacity-50"
