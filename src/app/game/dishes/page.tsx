@@ -49,6 +49,15 @@ export default async function GameDishesPage() {
         達成 {achievedCount} / {MAX_DISH_COUNT}品)。
       </p>
 
+      {/* 「料理を作る」は冗長な入口を減らすため、料理図鑑からのみ遷移できるようにしている */}
+      <Link
+        href="/game/cook"
+        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
+      >
+        <p className="font-bold">🍳 料理を作る</p>
+        <p className="mt-1 text-xs text-gray-500">カードがそろったレシピで「料理を作る」を実行し、家族ランクを上げる</p>
+      </Link>
+
       <div className="mt-6 space-y-8">
         {grouped.map(({ genre, items: list }) => (
           <div key={genre}>

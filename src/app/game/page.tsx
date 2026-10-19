@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
-import { getGachaStatus } from "@/lib/game/gacha";
-import { getQuizStatus } from "@/lib/game/quiz";
 import { RARITY_BADGE_STYLES, RARITY_LABELS, type CardRarity } from "@/lib/game/cards";
 import { MAX_DISH_COUNT } from "@/lib/game/rank";
 import { getAchievedDishTitles } from "@/lib/game/dish-progress";
@@ -30,8 +28,6 @@ export default async function GamePage() {
     { count: totalCards },
     { count: ownedCards },
     achievedDishTitles,
-    gachaStatus,
-    quizStatus,
     { data: recent, error: recentError },
   ] = await Promise.all([
     supabase.from("game_cards").select("id", { count: "exact", head: true }),
@@ -41,8 +37,6 @@ export default async function GamePage() {
       .eq("family_id", familyId)
       .not("first_acquired_at", "is", null),
     getAchievedDishTitles(supabase, familyId),
-    getGachaStatus(supabase, familyId),
-    getQuizStatus(supabase),
     supabase
       .from("card_acquisitions")
       .select("id, acquired_at, profiles(display_name), game_cards(id, rarity, ingredients_master(name))")
@@ -69,23 +63,23 @@ export default async function GamePage() {
         旬の食材カードを集めて、家族の図鑑を育てていく機能です。集めたカードで料理を作ると、家族のランクが上がっていきます。
       </p>
 
-      <div className="mt-6">
+      {/* 家族ランクと図鑑の進み具合は、縦に冗長にならないよう横並びのボタンにする */}
+      <div className="mt-6 grid grid-cols-2 gap-3">
         <FamilyRankCard achievedCount={achievedDishTitles.size} />
-      </div>
-
-      <div className="mt-4 rounded-xl bg-white p-4 shadow-raised">
-        <p className="text-sm text-gray-500">図鑑の進み具合</p>
-        <p className="mt-1 text-2xl font-bold">
-          {owned} <span className="text-base font-normal text-gray-400">/ {total} 枚</span>
-        </p>
+        <div className="rounded-xl bg-white p-4 shadow-raised">
+          <p className="text-sm text-gray-500">図鑑の進み具合</p>
+          <p className="mt-1 text-2xl font-bold">
+            {owned} <span className="text-base font-normal text-gray-400">/ {total} 枚</span>
+          </p>
+        </div>
       </div>
 
       <Link
-        href="/game/cook"
+        href="/game/cards"
         className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
       >
-        <p className="font-bold">🍳 料理を作る</p>
-        <p className="mt-1 text-xs text-gray-500">カードがそろったレシピで「料理を作る」を実行し、家族ランクを上げる</p>
+        <p className="font-bold">食材図鑑を見る</p>
+        <p className="mt-1 text-xs text-gray-500">カード一覧・詳細を確認できます</p>
       </Link>
 
       <Link
@@ -96,38 +90,6 @@ export default async function GamePage() {
         <p className="mt-1 text-xs text-gray-500">
           達成 {achievedDishTitles.size} / {MAX_DISH_COUNT}品。達成した料理から写真が公開されます
         </p>
-      </Link>
-
-      <Link
-        href="/game/gacha"
-        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
-      >
-        <p className="font-bold">🎁 今日のガチャ</p>
-        <p className="mt-1 text-xs text-gray-500">
-          {gachaStatus.remainingDraws > 0
-            ? `あなたは今日あと${gachaStatus.remainingDraws}回引けます`
-            : "今日のガチャはおしまいです。また明日引けます"}
-        </p>
-      </Link>
-
-      <Link
-        href="/game/quiz"
-        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
-      >
-        <p className="font-bold">❓ 今日のクイズ</p>
-        <p className="mt-1 text-xs text-gray-500">
-          {quizStatus.answeredToday >= quizStatus.dailyLimit
-            ? `今日の${quizStatus.dailyLimit}問は終わりました(${quizStatus.correctToday}問 正解)`
-            : `あなたは今日 ${quizStatus.answeredToday}/${quizStatus.dailyLimit}問 回答済み。${quizStatus.dailyLimit}問全問正解でガチャが+1回ふえます`}
-        </p>
-      </Link>
-
-      <Link
-        href="/game/cards"
-        className="mt-4 block rounded-xl bg-white p-4 shadow-raised transition hover:-translate-y-0.5"
-      >
-        <p className="font-bold">図鑑を見る</p>
-        <p className="mt-1 text-xs text-gray-500">カード一覧・詳細を確認できます</p>
       </Link>
 
       {(recent ?? []).length > 0 ? (

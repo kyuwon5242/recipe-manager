@@ -7,7 +7,9 @@ import { categoryIcon, sortByCategoryOrder, UNCATEGORIZED_LABEL } from "@/lib/in
 import type { CardRarity } from "@/lib/game/cards";
 import { resolveCardImageSrc } from "@/lib/game/card-image";
 
-export const metadata = { title: "食材図鑑" };
+// ハブページ(/game)の見出しも「食材図鑑」のため、同名で区別できなくなることを避けて
+// このページ(カード一覧)は「食材カード図鑑」とする。
+export const metadata = { title: "食材カード図鑑" };
 
 type CardRow = {
   id: string;
@@ -64,9 +66,13 @@ export default async function GameCardsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-center gap-3">
+      <Link href="/game" className="text-sm text-brand-700 hover:underline">
+        ← 食材図鑑に戻る
+      </Link>
+
+      <div className="mt-4 flex items-center gap-3">
         <ZoneIcon zone="game" />
-        <h1 className="text-2xl font-bold">食材図鑑</h1>
+        <h1 className="text-2xl font-bold">食材カード図鑑</h1>
       </div>
       <p className="mt-2 text-sm text-gray-500">
         入手済みのカードはイラストで、未入手のカードはシルエットで表示されます。

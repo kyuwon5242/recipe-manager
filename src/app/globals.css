@@ -132,6 +132,20 @@
   to { transform: translateX(-50%); }
 }
 
+/* 家族ランクゲージ(FamilyRankCard)の現在位置に乗せたフライパンが、
+   炒め物をあおっているように左右に小さく振れる演出。 */
+.rank-gauge-pan {
+  transform: translate(-50%, -50%) rotate(-12deg);
+  animation: rank-gauge-cook 0.5s ease-in-out infinite;
+}
+@keyframes rank-gauge-cook {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-12deg); }
+  50% { transform: translate(-50%, -50%) rotate(12deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-gauge-pan { animation: none; }
+}
+
 /* ゲーム要素(食材図鑑・ガチャ・クイズ・料理作成、/game配下すべて)専用の
    背景。他機能の生成り色(--color-paper)よりはっきり濃い「まな板の上で
    遊ぶ」木目調にして、ゲーム・コレクション感を出す(23章の提案・確認用)。

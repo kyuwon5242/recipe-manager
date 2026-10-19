@@ -14,23 +14,33 @@ export function FamilyRankCard({ achievedCount }: { achievedCount: number }) {
   return (
     <div className="rounded-xl bg-white p-4 shadow-raised">
       <p className="text-sm text-gray-500">家族ランク</p>
-      <div className="mt-1 flex items-center gap-3">
-        <span className="text-4xl" aria-hidden="true">
+      <div className="mt-1 flex items-center gap-2">
+        <span className="text-3xl" aria-hidden="true">
           {status.rank.icon}
         </span>
-        <div>
-          <p className="text-xl font-bold">{status.rank.label}</p>
+        <div className="min-w-0">
+          <p className="truncate text-lg font-bold">{status.rank.label}</p>
           <p className="text-sm text-gray-500">
             達成 {status.achievedCount} <span className="text-gray-400">/ {MAX_DISH_COUNT}種</span>
           </p>
         </div>
       </div>
       <div className="mt-3">
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-brand-500 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="relative h-2.5 w-full">
+          <div className="h-full w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-brand-500 transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          {/* 現在の達成状況を表す点に、フライパンで炒めているアニメーションを置く */}
+          <span
+            aria-hidden="true"
+            className="rank-gauge-pan pointer-events-none absolute top-1/2 text-base"
+            style={{ left: `${Math.min(96, Math.max(4, progress))}%` }}
+          >
+            🍳
+          </span>
         </div>
         <p className="mt-1 text-xs text-gray-400">
           {status.nextRank
