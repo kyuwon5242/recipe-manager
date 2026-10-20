@@ -24,6 +24,8 @@ export type CreateShoppingListOptions = {
   recipeServings?: Record<string, number>;
   // リスト全体のメモ(店員に伝えたいこと、まとめ買いの注意など)
   memo?: string | null;
+  // 献立単位のメモ(買い物メモとは別。献立トレイで入力したものを引き継ぐ)
+  mealMemo?: string | null;
 };
 
 export type ShoppingListSummary = {
@@ -175,6 +177,7 @@ export async function createShoppingList(
         updated_at: now.toISOString(),
         store_id: resolvedStoreId,
         memo: options.memo ?? null,
+        meal_memo: options.mealMemo ?? null,
       })
       .eq("id", existing.id);
 
@@ -205,6 +208,7 @@ export async function createShoppingList(
         title: formatJapaneseTitle(now),
         store_id: resolvedStoreId,
         memo: options.memo ?? null,
+        meal_memo: options.mealMemo ?? null,
       })
       .select("id")
       .single();

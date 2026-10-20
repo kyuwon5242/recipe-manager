@@ -22,7 +22,7 @@ export function GlobalFab() {
     return <GameFab key={pathname} />;
   }
 
-  return <MealPlanTrayFab />;
+  return <MealPlanTrayFab key={pathname} />;
 }
 
 function GameFab() {

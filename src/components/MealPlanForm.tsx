@@ -1,23 +1,76 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { ExistingRecipeSuggestionCard } from "@/components/ExistingRecipeSuggestionCard";
 import { AIThinkingIndicator } from "@/components/AIThinkingIndicator";
-import { suggestMealPlan, type MealPlanState } from "@/app/menu-plan/actions";
+import { suggestMealPlan, type MealPlanResult, type MealPlanState } from "@/app/menu-plan/actions";
 import { useMealPlanTray } from "@/lib/meal-plan-tray/context";
 import { toTrayGenre } from "@/types/meal-plan-tray";
 
 const initialState: MealPlanState = { result: null, error: null };
 const SLOT_GENRES = ["主食", "主菜", "副菜", "汁物"] as const;
 
+// 詳細画面(ポップアップ)に移動して戻ってきても、直前のリクエスト内容・
+// 提案結果が消えないよう、タブを閉じるまで保持するsessionStorageに保存する。
+const STORAGE_KEY = "recipe-app.menu-plan.last";
+
+type StoredMealPlan = {
+  request: string;
+  counts: Record<string, string>;
+  result: MealPlanResult;
+};
+
+function loadStored(): StoredMealPlan | null {
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredMealPlan;
+  } catch {
+    return null;
+  }
+}
+
 export function MealPlanForm() {
   const [state, formAction, isPending] = useActionState(suggestMealPlan, initialState);
   const { addToTray } = useMealPlanTray();
   const [addedAll, setAddedAll] = useState(false);
+  const [stored, setStored] = useState<StoredMealPlan | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const lastSubmittedRef = useRef<{ request: string; counts: Record<string, string> } | null>(null);
+
+  useEffect(() => {
+    // sessionStorageはサーバーで読めないため、SSRとのhydration不一致を避けて
+    // マウント後にクライアント側だけで読み込む(lazy初期値にすると不一致になる)。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStored(loadStored());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!state.result || !lastSubmittedRef.current) return;
+    const next: StoredMealPlan = { ...lastSubmittedRef.current, result: state.result };
+    setStored(next);
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // sessionStorageが使えない環境では諦める(プライベートウィンドウ等)
+    }
+  }, [state.result]);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const formData = new FormData(e.currentTarget);
+    const counts: Record<string, string> = {};
+    for (const genre of SLOT_GENRES) {
+      counts[genre] = String(formData.get(`count_${genre}`) ?? "1");
+    }
+    lastSubmittedRef.current = { request: String(formData.get("request") ?? ""), counts };
+  }
+
+  const effectiveResult = state.result ?? (hydrated ? (stored?.result ?? null) : null);
 
   const existingSlots = useMemo(
-    () => (state.result?.slots ?? []).filter((s) => s.kind === "existing"),
-    [state.result]
+    () => (effectiveResult?.slots ?? []).filter((s) => s.kind === "existing"),
+    [effectiveResult]
   );
 
   function handleAddAllToTray() {
@@ -36,7 +89,12 @@ export function MealPlanForm() {
 
   return (
     <div className="mt-6 space-y-6">
-      <form action={formAction} className="space-y-4">
+      <form
+        key={hydrated ? "restored" : "initial"}
+        action={formAction}
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
         <div>
           <label className="block text-sm font-medium text-gray-700">
             含めたい品目(品数)
@@ -47,7 +105,7 @@ export function MealPlanForm() {
                 {genre}
                 <select
                   name={`count_${genre}`}
-                  defaultValue={1}
+                  defaultValue={stored?.counts?.[genre] ?? "1"}
                   className="rounded-md border border-gray-300 px-2 py-1 text-sm"
                 >
                   {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -68,6 +126,7 @@ export function MealPlanForm() {
           <textarea
             name="request"
             rows={3}
+            defaultValue={stored?.request ?? ""}
             placeholder="例: 和食中心で野菜多め / 旬の食材を使いたい / さっぱりしたものが食べたい"
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
@@ -89,11 +148,11 @@ export function MealPlanForm() {
         </p>
       ) : null}
 
-      {state.result ? (
+      {effectiveResult ? (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">{state.result.planTitle}</h2>
+          <h2 className="text-lg font-semibold">{effectiveResult.planTitle}</h2>
           <ul className="space-y-3">
-            {state.result.slots.map((slot, i) => (
+            {effectiveResult.slots.map((slot, i) => (
               <li key={i}>
                 <p className="mb-1 text-xs font-semibold text-gray-400">{slot.slot}</p>
                 {slot.kind === "existing" ? (

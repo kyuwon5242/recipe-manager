@@ -12,7 +12,17 @@ import {
 import { TRAY_GENRES, type TrayGenre, type TraySlot, type TraySlotAssignment } from "@/types/meal-plan-tray";
 
 const STORAGE_KEY = "recipe-app.meal-plan-tray.v1";
+const MEMO_STORAGE_KEY = "recipe-app.meal-plan-tray.memo.v1";
 const MAX_PER_GENRE = 5;
+
+function loadInitialMemo(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(MEMO_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 function loadInitialSlots(): TraySlot[] {
   if (typeof window === "undefined") return [];
@@ -44,12 +54,17 @@ type MealPlanTrayContextValue = {
   // 登録済みレシピ(recipeIdを持つもの)がすでにトレイに入っているかどうか。
   // 追加ボタン側で「追加済み」の永続表示・再追加防止に使う。
   isRecipeInTray: (recipeId: string) => boolean;
+  // 献立単位のメモ(確定前にトレイ側で入力できるようにしたもの)。
+  // 食材リスト作成に進む際、買い物リストのmeal_memoへ引き継ぐ。
+  mealMemo: string;
+  setMealMemo: (value: string) => void;
 };
 
 const MealPlanTrayContext = createContext<MealPlanTrayContextValue | null>(null);
 
 export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
   const [slots, setSlots] = useState<TraySlot[]>([]);
+  const [mealMemo, setMealMemoState] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -57,6 +72,7 @@ export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
     // マウント後にクライアント側だけで読み込む(lazy初期値にすると不一致になる)。
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSlots(loadInitialSlots());
+    setMealMemoState(loadInitialMemo());
     setHydrated(true);
   }, []);
 
@@ -68,6 +84,15 @@ export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
       // localStorageが使えない環境では諦める(プライベートウィンドウ等)
     }
   }, [slots, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(MEMO_STORAGE_KEY, mealMemo);
+    } catch {
+      // localStorageが使えない環境では諦める(プライベートウィンドウ等)
+    }
+  }, [mealMemo, hydrated]);
 
   const addToTray = useCallback((genre: TrayGenre, assignment: TraySlotAssignment): boolean => {
     let added = false;
@@ -102,7 +127,10 @@ export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const clearAll = useCallback(() => setSlots([]), []);
+  const clearAll = useCallback(() => {
+    setSlots([]);
+    setMealMemoState("");
+  }, []);
 
   const isRecipeInTray = useCallback(
     (recipeId: string) =>
@@ -110,9 +138,20 @@ export function MealPlanTrayProvider({ children }: { children: ReactNode }) {
     [slots]
   );
 
+  const setMealMemo = useCallback((value: string) => setMealMemoState(value), []);
+
   const value = useMemo(
-    () => ({ slots, addToTray, removeSlot, setServings, clearAll, isRecipeInTray }),
-    [slots, addToTray, removeSlot, setServings, clearAll, isRecipeInTray]
+    () => ({
+      slots,
+      addToTray,
+      removeSlot,
+      setServings,
+      clearAll,
+      isRecipeInTray,
+      mealMemo,
+      setMealMemo,
+    }),
+    [slots, addToTray, removeSlot, setServings, clearAll, isRecipeInTray, mealMemo, setMealMemo]
   );
 
   return <MealPlanTrayContext.Provider value={value}>{children}</MealPlanTrayContext.Provider>;

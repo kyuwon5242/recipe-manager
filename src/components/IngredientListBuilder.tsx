@@ -184,11 +184,15 @@ export function IngredientListBuilder({
   initialSelections = [],
   stores = [],
   defaultItems = [],
+  initialMealMemo = null,
 }: {
   recipes: BuilderRecipe[];
   initialSelections?: InitialSelection[];
   stores?: FamilyStore[];
   defaultItems?: FamilyDefaultItem[];
+  // 献立トレイで入力済みの献立メモ(買い物メモとは別)。この画面に新しい
+  // 入力欄は設けず、そのまま確定処理まで引き継ぐだけに使う。
+  initialMealMemo?: string | null;
 }) {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(
     () => new Set(initialSelections.map((s) => s.id))
@@ -356,6 +360,7 @@ export function IngredientListBuilder({
           recipeIds: Array.from(selectedRecipeIds),
           recipeServings: buildRecipeServings(),
           memo: memo.trim() || null,
+          mealMemo: initialMealMemo,
         });
         if (result?.limitReached) {
           setPendingItems(items);
@@ -385,6 +390,7 @@ export function IngredientListBuilder({
           recipeIds: Array.from(selectedRecipeIds),
           recipeServings: buildRecipeServings(),
           memo: memo.trim() || null,
+          mealMemo: initialMealMemo,
         });
       } catch (err) {
         if (isRedirectError(err)) throw err;

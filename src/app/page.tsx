@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ZoneIcon } from "@/components/ZoneIcon";
+import { RecipeLink } from "@/components/RecipeLink";
+import { MealHistorySection } from "@/components/MealHistorySection";
 import { UsageScenarioBanner } from "@/components/UsageScenarioBanner";
 import { SeasonalIngredientsTicker, type SeasonalCardItem } from "@/components/SeasonalIngredientsTicker";
 import { HelpPanel } from "@/components/HelpPanel";
@@ -15,10 +17,13 @@ import type { CardRarity } from "@/lib/game/cards";
 import type { Zone } from "@/lib/zones";
 
 type LatestMealRow = {
+  id: string;
+  created_at: string;
+  meal_memo: string | null;
   shopping_list_recipes: {
     position: number;
     servings: number | null;
-    recipes: { id: string; title: string } | null;
+    recipes: { id: string; title: string; genre: string | null; category: string | null } | null;
   }[];
 };
 
@@ -102,20 +107,44 @@ export default async function HomePage() {
 
   const familyId = await getCurrentFamilyId().catch(() => null);
   let latestMealRecipes: { id: string; title: string; servings: number | null }[] = [];
+  let latestMealMemo: string | null = null;
+  let mealHistory: {
+    id: string;
+    createdAt: string;
+    memo: string | null;
+    recipes: { id: string; title: string; servings: number | null; genre: string | null; category: string | null }[];
+  }[] = [];
   if (familyId) {
-    const { data: latestList } = await supabase
+    const { data: recentLists } = await supabase
       .from("shopping_lists")
-      .select("id, shopping_list_recipes(position, servings, recipes(id, title))")
+      .select(
+        "id, created_at, meal_memo, shopping_list_recipes(position, servings, recipes(id, title, genre, category))"
+      )
       .eq("family_id", familyId)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<LatestMealRow>();
+      .limit(3)
+      .returns<LatestMealRow[]>();
 
-    latestMealRecipes = (latestList?.shopping_list_recipes ?? [])
-      .slice()
-      .sort((a, b) => a.position - b.position)
-      .filter((r) => r.recipes !== null)
-      .map((r) => ({ id: r.recipes!.id, title: r.recipes!.title, servings: r.servings }));
+    mealHistory = (recentLists ?? []).map((list) => ({
+      id: list.id,
+      createdAt: list.created_at,
+      memo: list.meal_memo,
+      recipes: list.shopping_list_recipes
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .filter((r) => r.recipes !== null)
+        .map((r) => ({
+          id: r.recipes!.id,
+          title: r.recipes!.title,
+          servings: r.servings,
+          genre: r.recipes!.genre,
+          category: r.recipes!.category,
+        })),
+    }));
+
+    const latest = mealHistory[0];
+    latestMealRecipes = latest?.recipes ?? [];
+    latestMealMemo = latest?.memo ?? null;
   }
 
   // 今が旬の食材カードをホームでアニメーション表示する(食材図鑑と同じ
@@ -176,20 +205,27 @@ export default async function HomePage() {
           <ul className="mt-2 flex flex-wrap gap-2">
             {latestMealRecipes.map((recipe) => (
               <li key={recipe.id}>
-                <Link
-                  href={`/recipes/${recipe.id}`}
+                <RecipeLink
+                  recipeId={recipe.id}
                   className="inline-block rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100"
                 >
                   {recipe.title}
                   {recipe.servings ? (
                     <span className="ml-1 font-normal text-brand-400">({recipe.servings}人前)</span>
                   ) : null}
-                </Link>
+                </RecipeLink>
               </li>
             ))}
           </ul>
+          {latestMealMemo ? (
+            <p className="mt-3 whitespace-pre-wrap rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              📝 {latestMealMemo}
+            </p>
+          ) : null}
         </div>
       ) : null}
+
+      <MealHistorySection sets={mealHistory} />
 
       <UsageScenarioBanner />
 

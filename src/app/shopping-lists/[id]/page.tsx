@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ShoppingListChecklist } from "@/components/ShoppingListChecklist";
 import { DeleteShoppingListButton } from "@/components/DeleteShoppingListButton";
+import { MealPlanDetailsSection } from "@/components/MealPlanDetailsSection";
 import { formatDateTime } from "@/lib/format-date";
 import type { ShoppingListItem } from "@/types/shopping-list";
 
@@ -10,10 +11,16 @@ type ListRow = {
   id: string;
   title: string;
   memo: string | null;
+  meal_memo: string | null;
   created_at: string;
   updated_at: string;
   store_id: string | null;
   family_stores: { category_order: string[] } | null;
+  shopping_list_recipes: {
+    position: number;
+    servings: number | null;
+    recipes: { id: string; title: string; genre: string | null; category: string | null } | null;
+  }[];
 };
 
 export default async function ShoppingListDetailPage({
@@ -24,7 +31,9 @@ export default async function ShoppingListDetailPage({
 
   const { data: list, error } = await supabase
     .from("shopping_lists")
-    .select("id, title, memo, created_at, updated_at, store_id, family_stores(category_order)")
+    .select(
+      "id, title, memo, meal_memo, created_at, updated_at, store_id, family_stores(category_order), shopping_list_recipes(position, servings, recipes(id, title, genre, category))"
+    )
     .eq("id", id)
     .maybeSingle<ListRow>();
 
@@ -67,6 +76,22 @@ export default async function ShoppingListDetailPage({
         items={items ?? []}
         categoryOrder={list.family_stores?.category_order}
         initialMemo={list.memo}
+      />
+
+      <MealPlanDetailsSection
+        listId={list.id}
+        initialMealMemo={list.meal_memo}
+        recipes={(list.shopping_list_recipes ?? [])
+          .slice()
+          .sort((a, b) => a.position - b.position)
+          .filter((r) => r.recipes !== null)
+          .map((r) => ({
+            id: r.recipes!.id,
+            title: r.recipes!.title,
+            genre: r.recipes!.genre,
+            category: r.recipes!.category,
+            servings: r.servings,
+          }))}
       />
     </div>
   );

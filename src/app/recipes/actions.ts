@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { resolveIngredientIds } from "@/lib/ingredients/resolve";
+import { getRecipeDetail, type RecipeDetail } from "@/lib/recipes/get-recipe-detail";
 import type { IngredientPrefill, RecipePrefill } from "@/types/recipe-suggestion";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -208,4 +209,9 @@ export async function registerRecipeIdea(idea: {
 
   revalidatePath("/recipes");
   return recipeId;
+}
+
+// レシピ詳細ポップアップ(RecipeDetailModal)から呼ぶ、ページ遷移なしの取得用。
+export async function getRecipeDetailForModal(id: string): Promise<RecipeDetail | null> {
+  return getRecipeDetail(id);
 }

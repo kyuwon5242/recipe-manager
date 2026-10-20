@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { GENRE_TABS, bucketGenre } from "@/lib/recipe-genre";
 import { getCategoryColor } from "@/lib/category-color";
 import { setDragPayload } from "@/lib/meal-plan-tray/drag";
 import { useIsTouchDevice } from "@/lib/hooks/useIsTouchDevice";
+import { useRecipeDetailModal } from "@/lib/recipe-detail-modal/context";
 
 type RecipeListItem = {
   id: string;
@@ -27,6 +27,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
   const [categoryFilter, setCategoryFilter] = useState("すべて");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const isTouch = useIsTouchDevice();
+  const { openRecipe, prefetchRecipe } = useRecipeDetailModal();
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -121,8 +122,18 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
             const color = getCategoryColor(recipe.category);
             return (
               <li key={recipe.id} className="relative">
-                <Link
-                  href={`/recipes/${recipe.id}`}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openRecipe(recipe.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openRecipe(recipe.id);
+                    }
+                  }}
+                  onMouseEnter={() => prefetchRecipe(recipe.id)}
+                  onTouchStart={() => prefetchRecipe(recipe.id)}
                   draggable={!isTouch}
                   onDragStart={(e) =>
                     setDragPayload(e, {
@@ -153,7 +164,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       <span className="text-xs text-gray-400">{recipe.servings}人前</span>
                     ) : null}
                   </div>
-                </Link>
+                </div>
                 <div className="absolute right-3 top-3">
                   <FavoriteButton recipeId={recipe.id} isFavorite={recipe.is_favorite} />
                 </div>

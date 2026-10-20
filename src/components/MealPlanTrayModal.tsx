@@ -9,7 +9,7 @@ import { useIsTouchDevice } from "@/lib/hooks/useIsTouchDevice";
 import { TRAY_GENRES, toTrayGenre } from "@/types/meal-plan-tray";
 
 export function MealPlanTrayModal({ onClose }: { onClose: () => void }) {
-  const { slots, addToTray, removeSlot, setServings, clearAll } = useMealPlanTray();
+  const { slots, addToTray, removeSlot, setServings, clearAll, mealMemo, setMealMemo } = useMealPlanTray();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSubmitting, startSubmit] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,8 @@ export function MealPlanTrayModal({ onClose }: { onClose: () => void }) {
             parts.push(`${newId}:${slot.servings}`);
           }
         }
-        router.push(`/shopping-list?plan=${parts.join(",")}`);
+        const memoParam = mealMemo.trim() ? `&mealMemo=${encodeURIComponent(mealMemo.trim())}` : "";
+        router.push(`/shopping-list?plan=${parts.join(",")}${memoParam}`);
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : "登録に失敗しました");
@@ -156,6 +157,17 @@ export function MealPlanTrayModal({ onClose }: { onClose: () => void }) {
               })}
             </div>
           )}
+
+          <div className="mt-4">
+            <label className="block text-xs font-semibold text-gray-500">献立メモ(任意)</label>
+            <textarea
+              value={mealMemo}
+              onChange={(e) => setMealMemo(e.target.value)}
+              rows={2}
+              placeholder="例: 今日は栄養バランス重視、子どもが苦手な野菜を混ぜてみた、など"
+              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            />
+          </div>
         </div>
 
         {error ? <p className="px-4 text-xs text-red-600">{error}</p> : null}

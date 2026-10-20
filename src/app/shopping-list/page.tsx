@@ -60,11 +60,18 @@ function parseInitialSelections(params: Record<string, string | string[] | undef
     .map((id) => ({ id, servings: null }));
 }
 
+function parseMealMemo(params: Record<string, string | string[] | undefined>): string | null {
+  const memoParam = params.mealMemo;
+  const memoValue = Array.isArray(memoParam) ? memoParam[0] : memoParam;
+  return memoValue?.trim() || null;
+}
+
 export default async function ShoppingListPage({
   searchParams,
 }: PageProps<"/shopping-list">) {
   const params = await searchParams;
   const initialSelections = parseInitialSelections(params);
+  const initialMealMemo = parseMealMemo(params);
 
   const supabase = await createClient();
   const familyId = await getCurrentFamilyId();
@@ -131,6 +138,7 @@ export default async function ShoppingListPage({
         initialSelections={initialSelections}
         stores={stores}
         defaultItems={defaultItems ?? []}
+        initialMealMemo={initialMealMemo}
       />
     </div>
   );

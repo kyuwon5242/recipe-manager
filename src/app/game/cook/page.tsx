@@ -7,6 +7,7 @@ import { MakeDishProvider } from "@/components/MakeDishProvider";
 import { getCategoryColor } from "@/lib/category-color";
 import { FamilyRankCard } from "@/components/FamilyRankCard";
 import { DISH_CATALOG } from "@/lib/game/dish-catalog";
+import { RecipeLink } from "@/components/RecipeLink";
 
 export const metadata = { title: "料理を作る" };
 
@@ -157,9 +158,9 @@ export default async function GameCookPage() {
                             ✨
                           </span>
                         ) : null}
-                        <Link href={`/recipes/${item.id}`} className="font-semibold hover:underline">
+                        <RecipeLink recipeId={item.id} className="font-semibold hover:underline">
                           {item.title}
-                        </Link>
+                        </RecipeLink>
                         {item.category ? (
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${color.bg} ${color.text}`}>
                             {item.category}
@@ -189,9 +190,9 @@ export default async function GameCookPage() {
           <ul className="mt-2 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
             {achieved.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                <Link href={`/recipes/${item.id}`} className="font-medium hover:underline">
+                <RecipeLink recipeId={item.id} className="font-medium hover:underline">
                   {item.title}
-                </Link>
+                </RecipeLink>
                 <span className="shrink-0 text-xs text-gray-400">
                   {item.achievedBy ?? "だれか"} さん・
                   {item.achievedAt

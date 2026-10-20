@@ -5,6 +5,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "@/components/HeaderNav";
 import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
+import { RecipeDetailModalProvider } from "@/lib/recipe-detail-modal/context";
+import { RecipeDetailModal } from "@/components/RecipeDetailModal";
 import { GlobalFab } from "@/components/GlobalFab";
 import { SeasonalHeaderParticles } from "@/components/SeasonalHeaderParticles";
 import { seasonalHeaderClass } from "@/lib/season";
@@ -95,8 +97,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="flex-1">
           <MealPlanTrayProvider>
-            {children}
-            {user ? <GlobalFab /> : null}
+            <RecipeDetailModalProvider>
+              {children}
+              {user ? <GlobalFab /> : null}
+              <RecipeDetailModal />
+            </RecipeDetailModalProvider>
           </MealPlanTrayProvider>
         </main>
       </body>

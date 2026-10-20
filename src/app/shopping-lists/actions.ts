@@ -124,6 +124,19 @@ export async function updateShoppingListMemo(listId: string, memo: string | null
   revalidatePath(`/shopping-lists/${listId}`);
 }
 
+// 献立単位のメモ(買い物メモとは別。「対象の献立」欄から編集する)
+export async function updateShoppingListMealMemo(listId: string, mealMemo: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("shopping_lists").update({ meal_memo: mealMemo }).eq("id", listId);
+
+  if (error) {
+    throw new Error(`献立メモの更新に失敗しました: ${error.message}`);
+  }
+
+  revalidatePath(`/shopping-lists/${listId}`);
+  revalidatePath("/");
+}
+
 export async function deleteShoppingList(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("shopping_lists").delete().eq("id", id);
