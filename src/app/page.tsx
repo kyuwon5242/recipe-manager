@@ -19,6 +19,7 @@ import type { Zone } from "@/lib/zones";
 type LatestMealRow = {
   id: string;
   created_at: string;
+  updated_at: string;
   meal_memo: string | null;
   shopping_list_recipes: {
     position: number;
@@ -118,16 +119,18 @@ export default async function HomePage() {
     const { data: recentLists } = await supabase
       .from("shopping_lists")
       .select(
-        "id, created_at, meal_memo, shopping_list_recipes(position, servings, recipes(id, title, genre, category))"
+        "id, created_at, updated_at, meal_memo, shopping_list_recipes(position, servings, recipes(id, title, genre, category))"
       )
       .eq("family_id", familyId)
-      .order("created_at", { ascending: false })
+      // 上限到達時に既存リストを上書きした場合、created_atは最初の作成時のまま
+      // 更新されないため、直近順の判定にはupdated_atを使う。
+      .order("updated_at", { ascending: false })
       .limit(3)
       .returns<LatestMealRow[]>();
 
     mealHistory = (recentLists ?? []).map((list) => ({
       id: list.id,
-      createdAt: list.created_at,
+      createdAt: list.updated_at,
       memo: list.meal_memo,
       recipes: list.shopping_list_recipes
         .slice()

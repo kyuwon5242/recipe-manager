@@ -163,9 +163,8 @@ export function MealPlanTrayModal({ onClose }: { onClose: () => void }) {
             <textarea
               value={mealMemo}
               onChange={(e) => setMealMemo(e.target.value)}
-              rows={2}
               placeholder="例: 今日は栄養バランス重視、子どもが苦手な野菜を混ぜてみた、など"
-              className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              className="mt-1 h-[33vh] w-full resize-y rounded-md border border-gray-300 px-2 py-1.5 text-sm"
             />
           </div>
         </div>
