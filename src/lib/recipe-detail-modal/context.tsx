@@ -32,17 +32,29 @@ export function RecipeDetailModalProvider({ children }: { children: ReactNode })
   const load = useCallback((id: string) => {
     let shouldFetch = false;
     setCache((prev) => {
-      if (prev[id]) return prev;
+      // 進行中の取得、または取得済み(成功)はそのまま使う。失敗やnot-found
+      // (detailがない)はここで素通りさせ、再取得させる(固まったまま
+      // 二度と表示できなくなるのを防ぐ)。
+      const current = prev[id];
+      if (current && (current.status === "loading" || current.detail)) return prev;
       shouldFetch = true;
       return { ...prev, [id]: { status: "loading", detail: null } };
     });
     if (!shouldFetch) return;
 
+    // モバイルの不安定な通信などでリクエストが応答なく固まった場合、
+    // "loading"のまま永久に戻ってこなくなるのを避けるためのタイムアウト。
+    const timeoutId = setTimeout(() => {
+      setCache((prev) => (prev[id]?.status === "loading" ? { ...prev, [id]: { status: "error", detail: null } } : prev));
+    }, 15000);
+
     getRecipeDetailForModal(id)
       .then((detail) => {
+        clearTimeout(timeoutId);
         setCache((prev) => ({ ...prev, [id]: { status: "loaded", detail } }));
       })
       .catch(() => {
+        clearTimeout(timeoutId);
         setCache((prev) => ({ ...prev, [id]: { status: "error", detail: null } }));
       });
   }, []);
@@ -55,7 +67,25 @@ export function RecipeDetailModalProvider({ children }: { children: ReactNode })
     [load]
   );
 
-  const closeRecipe = useCallback(() => setOpenRecipeId(null), []);
+  const closeRecipe = useCallback(() => {
+    // 失敗/未解決のまま閉じた場合は、次にタップしたとき自動で再取得される
+    // ようキャッシュを消しておく(エラー画面を出さず、閉じて再タップする
+    // だけで直せるようにするため)。成功済みのキャッシュは消さずに残す。
+    let idToClear: string | null = null;
+    setOpenRecipeId((prevId) => {
+      idToClear = prevId;
+      return null;
+    });
+    if (idToClear) {
+      setCache((prev) => {
+        const current = prev[idToClear!];
+        if (!current || current.detail) return prev;
+        const next = { ...prev };
+        delete next[idToClear!];
+        return next;
+      });
+    }
+  }, []);
   const prefetchRecipe = useCallback((id: string) => load(id), [load]);
 
   const patchCachedRecipe = useCallback((id: string, patch: Partial<Recipe>) => {

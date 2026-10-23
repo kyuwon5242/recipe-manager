@@ -43,10 +43,8 @@ export function RecipeDetailModal() {
           </button>
         </div>
 
-        {!entry || entry.status === "loading" ? (
+        {!entry?.detail ? (
           <p className="py-10 text-center text-sm text-gray-400">読み込み中...</p>
-        ) : entry.status === "error" || !entry.detail ? (
-          <p className="py-10 text-center text-sm text-red-600">レシピの取得に失敗しました。</p>
         ) : (
           <RecipeDetailContent
             detail={entry.detail}
