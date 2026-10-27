@@ -76,7 +76,11 @@ export function MealPlanDetailsSection({
                   key={recipe.id}
                   className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                 >
-                  <RecipeLink recipeId={recipe.id} className="font-medium text-brand-700 hover:underline">
+                  <RecipeLink
+                    recipeId={recipe.id}
+                    servings={recipe.servings}
+                    className="font-medium text-brand-700 hover:underline"
+                  >
                     {recipe.title}
                   </RecipeLink>
                   <div className="flex items-center gap-2">

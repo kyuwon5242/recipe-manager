@@ -11,8 +11,12 @@ type Cache = Record<string, CacheEntry>;
 type RecipeDetailModalContextValue = {
   openRecipeId: string | null;
   entry: CacheEntry | null;
+  // 献立トレイ・トップページの「今回つくるレシピ」など、登録済みの人数が
+  // 分かっている文脈から開いた場合の初期表示人数(無ければnull=レシピ本来の
+  // 人数で開く)。
+  initialServings: number | null;
   // クリックで開く。キャッシュ済みならサーバーリクエスト無しで即表示する。
-  openRecipe: (id: string) => void;
+  openRecipe: (id: string, initialServings?: number | null) => void;
   closeRecipe: () => void;
   // カードにマウスオーバー/タッチした時点で裏取得を始めておく(一覧の
   // 初期表示自体は変えず、実際に開こうとしたレシピだけ先読みする)。
@@ -27,6 +31,7 @@ const RecipeDetailModalContext = createContext<RecipeDetailModalContextValue | n
 
 export function RecipeDetailModalProvider({ children }: { children: ReactNode }) {
   const [openRecipeId, setOpenRecipeId] = useState<string | null>(null);
+  const [initialServings, setInitialServings] = useState<number | null>(null);
   const [cache, setCache] = useState<Cache>({});
 
   const load = useCallback((id: string) => {
@@ -60,8 +65,9 @@ export function RecipeDetailModalProvider({ children }: { children: ReactNode })
   }, []);
 
   const openRecipe = useCallback(
-    (id: string) => {
+    (id: string, servings?: number | null) => {
       setOpenRecipeId(id);
+      setInitialServings(servings && servings > 0 ? servings : null);
       load(id);
     },
     [load]
@@ -102,8 +108,8 @@ export function RecipeDetailModalProvider({ children }: { children: ReactNode })
   const entry = openRecipeId ? (cache[openRecipeId] ?? null) : null;
 
   const value = useMemo(
-    () => ({ openRecipeId, entry, openRecipe, closeRecipe, prefetchRecipe, patchCachedRecipe }),
-    [openRecipeId, entry, openRecipe, closeRecipe, prefetchRecipe, patchCachedRecipe]
+    () => ({ openRecipeId, entry, initialServings, openRecipe, closeRecipe, prefetchRecipe, patchCachedRecipe }),
+    [openRecipeId, entry, initialServings, openRecipe, closeRecipe, prefetchRecipe, patchCachedRecipe]
   );
 
   return <RecipeDetailModalContext.Provider value={value}>{children}</RecipeDetailModalContext.Provider>;

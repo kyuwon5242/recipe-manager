@@ -5,13 +5,14 @@ import { useTransition } from "react";
 import { useRecipeDetailModal } from "@/lib/recipe-detail-modal/context";
 import { AddToTrayButton } from "@/components/AddToTrayButton";
 import { DeleteRecipeButton } from "@/components/DeleteRecipeButton";
+import { RecipeServingsPanel } from "@/components/RecipeServingsPanel";
 import { deleteRecipe, toggleFavorite } from "@/app/recipes/actions";
 import type { RecipeDetail } from "@/lib/recipes/get-recipe-detail";
 
 // レシピカード/リンクからページ遷移せずに詳細を確認できるポップアップ。
 // 内容は/recipes/[id]の詳細ページと同じ項目を表示する。
 export function RecipeDetailModal() {
-  const { openRecipeId, entry, closeRecipe, patchCachedRecipe } = useRecipeDetailModal();
+  const { openRecipeId, entry, initialServings, closeRecipe, patchCachedRecipe } = useRecipeDetailModal();
   const [isFavoritePending, startFavoriteTransition] = useTransition();
 
   if (!openRecipeId) return null;
@@ -48,8 +49,10 @@ export function RecipeDetailModal() {
         ) : (
           <RecipeDetailContent
             detail={entry.detail}
+            initialServings={initialServings}
             isFavoritePending={isFavoritePending}
             onToggleFavorite={handleToggleFavorite}
+            onEditClick={closeRecipe}
           />
         )}
       </div>
@@ -59,12 +62,16 @@ export function RecipeDetailModal() {
 
 function RecipeDetailContent({
   detail,
+  initialServings,
   isFavoritePending,
   onToggleFavorite,
+  onEditClick,
 }: {
   detail: RecipeDetail;
+  initialServings: number | null;
   isFavoritePending: boolean;
   onToggleFavorite: (recipeId: string, nextValue: boolean) => void;
+  onEditClick: () => void;
 }) {
   const { recipe, ingredients } = detail;
 
@@ -96,6 +103,7 @@ function RecipeDetailContent({
           />
           <Link
             href={`/recipes/${recipe.id}/edit`}
+            onClick={onEditClick}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
           >
             編集
@@ -104,10 +112,7 @@ function RecipeDetailContent({
         </div>
       </div>
 
-      <p className="mt-1 text-sm text-gray-500">
-        {[recipe.category, recipe.genre].filter(Boolean).join(" / ") || "カテゴリ未設定"}
-        {recipe.servings ? ` ・ ${recipe.servings}人前` : ""}
-      </p>
+      <RecipeServingsPanel recipe={recipe} ingredients={ingredients} initialServings={initialServings} headingTag="h3" />
 
       {recipe.recipe_url ? (
         <p className="mt-4 text-sm">
@@ -122,24 +127,6 @@ function RecipeDetailContent({
           </a>
         </p>
       ) : null}
-
-      <section className="mt-6">
-        <h3 className="text-lg font-semibold">材料</h3>
-        {ingredients.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">材料が登録されていません。</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
-            {ingredients.map((ingredient) => (
-              <li key={ingredient.id} className="flex justify-between px-3 py-2 text-sm">
-                <span>{ingredient.ingredients_master?.name ?? "(不明な食材)"}</span>
-                <span className="text-gray-500">
-                  {[ingredient.quantity, ingredient.unit].filter(Boolean).join("")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       <section className="mt-6">
         <h3 className="text-lg font-semibold">作り方</h3>

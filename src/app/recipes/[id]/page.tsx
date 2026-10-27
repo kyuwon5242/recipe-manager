@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DeleteRecipeButton } from "@/components/DeleteRecipeButton";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { AddToTrayButton } from "@/components/AddToTrayButton";
+import { RecipeServingsPanel } from "@/components/RecipeServingsPanel";
 import { deleteRecipe } from "../actions";
 import { getRecipeDetail } from "@/lib/recipes/get-recipe-detail";
 
@@ -47,11 +48,7 @@ export default async function RecipeDetailPage({
         </div>
       </div>
 
-      <p className="mt-1 text-sm text-gray-500">
-        {[recipe.category, recipe.genre].filter(Boolean).join(" / ") ||
-          "カテゴリ未設定"}
-        {recipe.servings ? ` ・ ${recipe.servings}人前` : ""}
-      </p>
+      <RecipeServingsPanel recipe={recipe} ingredients={ingredients} headingTag="h2" />
 
       {recipe.recipe_url ? (
         <p className="mt-4 text-sm">
@@ -66,27 +63,6 @@ export default async function RecipeDetailPage({
           </a>
         </p>
       ) : null}
-
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold">材料</h2>
-        {ingredients.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">材料が登録されていません。</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-gray-100 rounded-md border border-gray-200 bg-white">
-            {ingredients.map((ingredient) => (
-              <li
-                key={ingredient.id}
-                className="flex justify-between px-3 py-2 text-sm"
-              >
-                <span>{ingredient.ingredients_master?.name ?? "(不明な食材)"}</span>
-                <span className="text-gray-500">
-                  {[ingredient.quantity, ingredient.unit].filter(Boolean).join("")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold">作り方</h2>

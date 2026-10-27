@@ -88,7 +88,11 @@ export function MealHistorySection({ sets }: { sets: MealHistorySet[] }) {
                 <ul className="mt-2 space-y-1.5">
                   {set.recipes.map((recipe) => (
                     <li key={recipe.id} className="flex items-center justify-between gap-2 text-sm">
-                      <RecipeLink recipeId={recipe.id} className="text-brand-700 hover:underline">
+                      <RecipeLink
+                        recipeId={recipe.id}
+                        servings={recipe.servings}
+                        className="text-brand-700 hover:underline"
+                      >
                         {recipe.title}
                         {recipe.servings ? (
                           <span className="ml-1 text-xs text-gray-400">({recipe.servings}人前)</span>

@@ -9,10 +9,14 @@ import { useRecipeDetailModal } from "@/lib/recipe-detail-modal/context";
 // 開いたときには多くの場合キャッシュ済みで即表示になる。
 export function RecipeLink({
   recipeId,
+  servings,
   className,
   children,
 }: {
   recipeId: string;
+  // 献立登録済みの人数など、レシピ本来の人数より優先して開きたい人数が
+  // 分かっている場合に指定する(例: トップページの「今回つくるレシピ」)。
+  servings?: number | null;
   className?: string;
   children: ReactNode;
 }) {
@@ -21,7 +25,7 @@ export function RecipeLink({
   return (
     <button
       type="button"
-      onClick={() => openRecipe(recipeId)}
+      onClick={() => openRecipe(recipeId, servings)}
       onMouseEnter={() => prefetchRecipe(recipeId)}
       onTouchStart={() => prefetchRecipe(recipeId)}
       className={className}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { HeaderNav } from "@/components/HeaderNav";
@@ -8,6 +9,7 @@ import { MealPlanTrayProvider } from "@/lib/meal-plan-tray/context";
 import { RecipeDetailModalProvider } from "@/lib/recipe-detail-modal/context";
 import { RecipeDetailModal } from "@/components/RecipeDetailModal";
 import { GlobalFab } from "@/components/GlobalFab";
+import { NavigationProgressOverlay } from "@/components/NavigationProgressOverlay";
 import { SeasonalHeaderParticles } from "@/components/SeasonalHeaderParticles";
 import { seasonalHeaderClass } from "@/lib/season";
 import "./globals.css";
@@ -104,6 +106,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </RecipeDetailModalProvider>
           </MealPlanTrayProvider>
         </main>
+        <Suspense fallback={null}>
+          <NavigationProgressOverlay />
+        </Suspense>
       </body>
     </html>
   );

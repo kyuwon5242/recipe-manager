@@ -210,6 +210,7 @@ export default async function HomePage() {
               <li key={recipe.id}>
                 <RecipeLink
                   recipeId={recipe.id}
+                  servings={recipe.servings}
                   className="inline-block rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 transition hover:bg-brand-100"
                 >
                   {recipe.title}
