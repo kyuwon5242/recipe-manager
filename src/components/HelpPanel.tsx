@@ -29,7 +29,7 @@ export function HelpPanel({ title, items }: { title: string; items: HelpItem[] }
           onClick={() => setOpen(false)}
         >
           <div
-            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-raised sm:rounded-2xl"
+            className="max-h-[80dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 shadow-raised sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

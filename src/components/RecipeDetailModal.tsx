@@ -30,7 +30,7 @@ export function RecipeDetailModal() {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-2xl bg-white p-5 shadow-raised sm:max-w-lg sm:rounded-2xl"
+        className="flex max-h-[85dvh] w-full flex-col overflow-y-auto rounded-t-2xl bg-white p-5 shadow-raised sm:max-w-lg sm:rounded-2xl"
       >
         <div className="flex justify-end">
           <button

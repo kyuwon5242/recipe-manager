@@ -80,7 +80,7 @@ export function MealPlanTrayModal({ onClose }: { onClose: () => void }) {
         }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
-        className={`flex max-h-[85vh] w-full flex-col rounded-t-2xl bg-white shadow-raised sm:max-w-md sm:rounded-2xl ${
+        className={`flex max-h-[85dvh] w-full flex-col rounded-t-2xl bg-white shadow-raised sm:max-w-md sm:rounded-2xl ${
           isDragOver ? "ring-2 ring-brand-400" : ""
         }`}
       >
