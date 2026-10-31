@@ -27,7 +27,7 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
   const [categoryFilter, setCategoryFilter] = useState("すべて");
   const [favoriteOnly, setFavoriteOnly] = useState(false);
   const isTouch = useIsTouchDevice();
-  const { openRecipe, prefetchRecipe } = useRecipeDetailModal();
+  const { openRecipe } = useRecipeDetailModal();
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -132,8 +132,6 @@ export function RecipeListClient({ recipes }: { recipes: RecipeListItem[] }) {
                       openRecipe(recipe.id);
                     }
                   }}
-                  onMouseEnter={() => prefetchRecipe(recipe.id)}
-                  onTouchStart={() => prefetchRecipe(recipe.id)}
                   draggable={!isTouch}
                   onDragStart={(e) =>
                     setDragPayload(e, {
