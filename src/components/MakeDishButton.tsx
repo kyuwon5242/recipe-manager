@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { makeDish } from "@/app/game/cook/actions";
+import { makeDish } from "@/app/game/dishes/actions";
 import { useNotifyDishAchieved } from "@/components/MakeDishProvider";
 
 export function MakeDishButton({ recipeId, title }: { recipeId: string; title: string }) {

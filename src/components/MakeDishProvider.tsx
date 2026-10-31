@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { createContext, useContext, useState } from "react";
 import { DishCardVisual } from "@/components/DishCardVisual";
-import type { AchievedDish } from "@/app/game/cook/actions";
+import type { AchievedDish } from "@/app/game/dishes/actions";
 
 const MakeDishContext = createContext<((dish: AchievedDish) => void) | null>(null);
 

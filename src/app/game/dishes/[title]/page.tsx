@@ -4,9 +4,21 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentFamilyId } from "@/lib/family/current";
 import { ZoneIcon } from "@/components/ZoneIcon";
 import { DishCardVisual } from "@/components/DishCardVisual";
+import { MakeDishButton } from "@/components/MakeDishButton";
+import { MakeDishProvider } from "@/components/MakeDishProvider";
 import { DISH_CATALOG } from "@/lib/game/dish-catalog";
 import { resolveDishImageSrc } from "@/lib/game/dish-image";
-import { getReadyDishTitles } from "@/lib/game/dish-progress";
+
+type RecipeRow = {
+  id: string;
+  recipe_ingredients: { ingredient_id: string }[];
+};
+
+type CardRow = {
+  id: string;
+  ingredient_id: string;
+  ingredients_master: { name: string } | null;
+};
 
 export default async function GameDishDetailPage({ params }: { params: Promise<{ title: string }> }) {
   const { title: encodedTitle } = await params;
@@ -21,10 +33,10 @@ export default async function GameDishDetailPage({ params }: { params: Promise<{
 
   const { data: recipe, error: recipeError } = await supabase
     .from("recipes")
-    .select("id")
+    .select("id, recipe_ingredients(ingredient_id)")
     .eq("family_id", familyId)
     .eq("title", title)
-    .maybeSingle();
+    .maybeSingle<RecipeRow>();
 
   if (recipeError) {
     throw new Error(`レシピの取得に失敗しました: ${recipeError.message}`);
@@ -49,55 +61,88 @@ export default async function GameDishDetailPage({ params }: { params: Promise<{
 
   const isAchieved = achievement !== null;
   const src = isAchieved ? resolveDishImageSrc(title) : null;
-  const readyTitles = await getReadyDishTitles(supabase, familyId);
-  const isReady = readyTitles.has(title);
+
+  // 「料理を作る」に必要な食材カードの充足状況(未達成のときだけ必要)。
+  // かつては/game/cookが全レシピ分まとめて計算していたが、詳細ページ単体で
+  // このレシピの分だけ計算する(不足食材名の表示は/game/cook廃止後もここで維持する)。
+  let isReady = false;
+  let missingNames: string[] = [];
+  let requiredCount = 0;
+  if (recipe && !isAchieved) {
+    const ingredientIds = recipe.recipe_ingredients.map((ri) => ri.ingredient_id);
+    if (ingredientIds.length > 0) {
+      const [{ data: cards, error: cardsError }, { data: familyCards, error: familyCardsError }] = await Promise.all([
+        supabase
+          .from("game_cards")
+          .select("id, ingredient_id, ingredients_master(name)")
+          .in("ingredient_id", ingredientIds)
+          .returns<CardRow[]>(),
+        supabase.from("family_cards").select("card_id, owned_count").eq("family_id", familyId),
+      ]);
+
+      if (cardsError) throw new Error(`カード一覧の取得に失敗しました: ${cardsError.message}`);
+      if (familyCardsError) throw new Error(`所持カードの取得に失敗しました: ${familyCardsError.message}`);
+
+      const ownedCountByCard = new Map((familyCards ?? []).map((fc) => [fc.card_id, fc.owned_count]));
+      const requiredCards = cards ?? [];
+      const missingCards = requiredCards.filter((c) => (ownedCountByCard.get(c.id) ?? 0) <= 0);
+      requiredCount = requiredCards.length;
+      missingNames = missingCards.map((c) => c.ingredients_master?.name ?? "(不明な食材)");
+      isReady = requiredCount > 0 && missingCards.length === 0;
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-8">
-      <Link href="/game/dishes" className="text-sm text-brand-700 hover:underline">
-        ← 料理図鑑一覧に戻る
-      </Link>
+    <MakeDishProvider>
+      <div className="mx-auto max-w-md px-4 py-8">
+        <Link href="/game/dishes" className="text-sm text-brand-700 hover:underline">
+          ← 料理図鑑一覧に戻る
+        </Link>
 
-      <div className="mx-auto mt-4">
-        <DishCardVisual
-          title={dish.title}
-          category={dish.category}
-          genre={dish.genre}
-          src={src}
-          isAchieved={isAchieved}
-          isReady={isReady}
-        />
-      </div>
-
-      <div className="mt-4 rounded-xl border-2 border-white bg-white p-5 shadow-raised">
-        <div className="flex items-center gap-2">
-          <ZoneIcon zone="game" icon="🍽️" />
-          <h1 className="text-xl font-bold">{dish.title}</h1>
+        <div className="mx-auto mt-4">
+          <DishCardVisual
+            title={dish.title}
+            category={dish.category}
+            genre={dish.genre}
+            src={src}
+            isAchieved={isAchieved}
+            isReady={isReady}
+          />
         </div>
 
-        {isAchieved ? (
-          <p className="mt-4 text-sm text-gray-500">
-            {achievement?.display_name ?? "だれか"} さんが達成しました
-            {achievement?.created_at ? `(${new Date(achievement.created_at).toLocaleDateString("ja-JP")})` : ""}
-          </p>
-        ) : recipe ? (
-          <>
+        <div className="mt-4 rounded-xl border-2 border-white bg-white p-5 shadow-raised">
+          <div className="flex items-center gap-2">
+            <ZoneIcon zone="game" icon="🍽️" />
+            <h1 className="text-xl font-bold">{dish.title}</h1>
+          </div>
+
+          {isAchieved ? (
             <p className="mt-4 text-sm text-gray-500">
-              {isReady
-                ? "✨ 食材カードがそろいました!「料理を作る」で達成できます。"
-                : "まだ達成していない料理です。「料理を作る」でカードがそろっているか確認できます。"}
+              {achievement?.display_name ?? "だれか"} さんが達成しました
+              {achievement?.created_at ? `(${new Date(achievement.created_at).toLocaleDateString("ja-JP")})` : ""}
             </p>
-            <Link
-              href="/game/cook"
-              className="mt-4 block animate-[bounce_2s_infinite] rounded-full bg-gradient-to-r from-amber-400 to-brand-600 px-4 py-2 text-center text-sm font-bold text-white shadow-brand transition hover:scale-105 active:scale-95"
-            >
-              {"🍳 Let's Cooking!"}
-            </Link>
-          </>
-        ) : (
-          <p className="mt-4 text-sm text-gray-500">このレシピはまだ登録されていません。</p>
-        )}
+          ) : recipe ? (
+            <>
+              {requiredCount === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">このレシピには対応する食材カードがありません。</p>
+              ) : isReady ? (
+                <p className="mt-4 text-sm text-gray-500">🔓 食材カードがそろいました!「料理を作る」で達成できます。</p>
+              ) : (
+                <p className="mt-4 text-sm text-gray-500">
+                  まだ必要な食材カードがそろっていません。不足: {missingNames.join("、")}
+                </p>
+              )}
+              {isReady ? (
+                <div className="mt-4">
+                  <MakeDishButton recipeId={recipe.id} title={dish.title} />
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-gray-500">このレシピはまだ登録されていません。</p>
+          )}
+        </div>
       </div>
-    </div>
+    </MakeDishProvider>
   );
 }

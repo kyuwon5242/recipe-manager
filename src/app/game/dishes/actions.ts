@@ -44,10 +44,10 @@ export async function makeDish(recipeId: string): Promise<MakeDishResult> {
     return { error: known ? known[1] : `料理を作るのに失敗しました: ${error.message}`, dish: null };
   }
 
-  revalidatePath("/game/cook");
   revalidatePath("/game");
   revalidatePath("/game/cards");
   revalidatePath("/game/dishes");
+  revalidatePath("/game/dishes/[title]", "page");
 
   // 画像パス解決(resolveDishImageSrc)はfsでファイル存在を確認するため、
   // クライアントから渡された値ではなくDISH_CATALOG(固定の信頼できる文字列)の

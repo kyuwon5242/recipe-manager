@@ -4,8 +4,8 @@ import { getCategoryColor } from "@/lib/category-color";
 // 未達成(isAchieved=false)は写真を出さず鍵アイコンのシルエットにする
 // (game-design.md 10章)。タイトル・カテゴリ・ジャンルは、既にレシピ一覧等で
 // 見えている情報のため未達成でもそのまま表示する(隠すのは写真のみ)。
-// isReady(未達成だが食材カードが100%そろっている)は外枠を光らせて、
-// 「今すぐ作れる」対象をひと目で分かるようにする。
+// isReady(未達成だが食材カードが100%そろっている)は鍵が開いたアイコン(🔓)
+// に切り替え、外枠も光らせて「今すぐ作れる」対象をひと目で分かるようにする。
 export function DishCardVisual({
   title,
   category,
@@ -47,12 +47,12 @@ export function DishCardVisual({
             }`}
             aria-hidden="true"
           >
-            {highlightReady ? "✨" : "🔒"}
+            {highlightReady ? "🔓" : "🔒"}
           </div>
         )}
         {highlightReady ? (
           <span className="absolute left-1.5 top-1.5 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-            作れる!
+            鍵が開いた!
           </span>
         ) : null}
       </div>

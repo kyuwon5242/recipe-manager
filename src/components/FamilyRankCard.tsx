@@ -1,7 +1,7 @@
 import { getFamilyRankStatus, MAX_DISH_COUNT } from "@/lib/game/rank";
 
 // 家族ランク表示(アイコン・現在ランク・次のランクまでのゲージ)。
-// /game ハブ・/game/cook の両方で共通利用する。
+// /game ハブで利用する。
 export function FamilyRankCard({ achievedCount }: { achievedCount: number }) {
   const status = getFamilyRankStatus(achievedCount);
   const rangeStart = status.rank.min;
