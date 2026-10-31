@@ -32,7 +32,7 @@ export default async function GameCardsPage() {
       .from("game_cards")
       .select("id, rarity, illustration_url, ingredients_master(name, reading, category, season_months)")
       .returns<CardRow[]>(),
-    supabase.from("family_cards").select("card_id, first_acquired_at").eq("family_id", familyId),
+    supabase.from("family_cards").select("card_id, owned_count, first_acquired_at").eq("family_id", familyId),
   ]);
 
   if (cardsError) {
@@ -45,6 +45,7 @@ export default async function GameCardsPage() {
   // 「入手済み」は初回入手(first_acquired_at)の有無で判定する。料理作成でowned_countが
   // 0になっても、一度埋めた図鑑欄の表示は消えない(game-design.md 4.2・4.4節)。
   const acquiredCardIds = new Set((owned ?? []).filter((o) => o.first_acquired_at !== null).map((o) => o.card_id));
+  const ownedCountByCardId = new Map((owned ?? []).map((o) => [o.card_id, o.owned_count]));
 
   const items = (cards ?? []).map((card) => ({
     id: card.id,
@@ -55,6 +56,7 @@ export default async function GameCardsPage() {
     category: card.ingredients_master?.category ?? UNCATEGORIZED_LABEL,
     seasonMonths: card.ingredients_master?.season_months ?? null,
     isAcquired: acquiredCardIds.has(card.id),
+    ownedCount: ownedCountByCardId.get(card.id) ?? 0,
   }));
 
   const grouped = sortByCategoryOrder(items).reduce<Map<string, typeof items>>((map, item) => {
@@ -99,6 +101,7 @@ export default async function GameCardsPage() {
                       reading={item.reading}
                       seasonMonths={item.seasonMonths}
                       isOwned={isOwned}
+                      ownedCount={item.ownedCount}
                     />
                   </Link>
                 );

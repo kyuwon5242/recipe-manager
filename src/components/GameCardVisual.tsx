@@ -41,6 +41,7 @@ export function GameCardVisual({
   reading,
   seasonMonths,
   isOwned,
+  ownedCount,
   iconClassName,
   compact,
 }: {
@@ -51,6 +52,9 @@ export function GameCardVisual({
   reading?: string | null;
   seasonMonths?: number[] | null;
   isOwned: boolean;
+  // 所持枚数。右上に「×2」のように表示する(料理作成で消費されても入手済み
+  // 表示自体は残る仕様のため、0枚でもそのまま表示する)。未指定なら表示しない。
+  ownedCount?: number;
   iconClassName?: string;
   compact?: boolean;
 }) {
@@ -60,6 +64,11 @@ export function GameCardVisual({
   return (
     <div className="game-card" data-compact={compact ? "" : undefined}>
       <div className={`game-card-frame ${rarityClass}`} style={{ "--h": h, "--k": k } as React.CSSProperties}>
+        {isOwned && typeof ownedCount === "number" ? (
+          <span className="game-card-count" aria-label={`所持数 ${ownedCount}枚`}>
+            ×{ownedCount}
+          </span>
+        ) : null}
         <div className="game-card-inner">
           <div className="game-card-plate">
             <span style={isOwned ? { fontSize: nameFontSize(name) } : undefined}>

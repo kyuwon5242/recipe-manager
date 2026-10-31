@@ -102,6 +102,7 @@ export default async function GameCardDetailPage({ params }: { params: Promise<{
           reading={card.ingredients_master?.reading ?? null}
           seasonMonths={card.ingredients_master?.season_months ?? null}
           isOwned={isOwned}
+          ownedCount={owned?.owned_count ?? 0}
           iconClassName="text-5xl"
         />
       </div>

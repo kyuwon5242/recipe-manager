@@ -261,6 +261,29 @@
 .game-card-frame.s .game-card-chip { background: linear-gradient(135deg, #fff0a8, #d9a520); color: #5a3a00; }
 .game-card-frame.u .game-card-chip { background: linear-gradient(115deg, #ffe98a, #ff9ad5, #8ee8ff, #ffe98a); color: #4a2a00; }
 
+/* 所持枚数バッジ(カード右上に「×2」のように重ねて表示。料理作成で消費され
+   0枚になっても入手済み表示自体は残るため、×0もそのまま表示する) */
+.game-card-count {
+  position: absolute;
+  top: -2.2cqw;
+  right: -2.2cqw;
+  z-index: 4;
+  min-width: 10cqw;
+  height: 10cqw;
+  padding: 0 1.5cqw;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  color: #fff;
+  font-size: 6.4cqw;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0.6cqw 1.6cqw rgba(0, 0, 0, 0.35), 0 0 0 0.8cqw #fff;
+}
+.game-card[data-compact] .game-card-count { display: none; }
+
 /* イラストは全レアリティで白い紙の窓に収める(画像は白背景で用意する) */
 .game-card-art {
   position: relative;
